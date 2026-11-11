@@ -1,0 +1,8 @@
+node_modules/
+dist/
+js/three/kaykit-data.js
+js/three/chars-data.js
+js/three/heroes-data.js
+js/three/extra-data.js
+js/sfx-data.js
+.DS_Store

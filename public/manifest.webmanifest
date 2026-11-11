@@ -1,0 +1,16 @@
+{
+  "name": "Café Cantinho",
+  "short_name": "Café Cantinho",
+  "description": "Seu cantinho de café: cozinhe, decore e receba clientes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff3e2",
+  "theme_color": "#fff3e2",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

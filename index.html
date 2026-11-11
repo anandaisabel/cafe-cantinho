@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Café Cantinho</title>
+<!-- installable web app (GitHub Pages); harmless where these files are absent -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#fff3e2">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Café Cantinho">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="overlay"></div>
+
+<!-- top HUD -->
+<header class="hud">
+  <!-- every chip has the same shape: icon on the left, value on the right, optional fill behind -->
+  <button class="hchip c-lvl" id="bLvl" title="Ver progressão"><i class="cfill" id="xpFill"></i><span class="cic lvlbadge"><span id="lvlStar"></span><b id="lvlNum">1</b></span><b class="cval" id="xpTxt">0/40</b></button>
+  <div class="hchip c-coin"><span class="cic" id="coinIc"></span><b class="cval" id="coinTxt">0</b></div>
+  <div class="hchip c-gem" id="gemChip" title="Diamantes"><span class="cic" id="gemIc"></span><b class="cval" id="gemTxt">0</b></div>
+  <button class="hchip c-pop" id="popChip" title="Popularidade do café"><span class="cic" id="popFace"></span><b class="cval" id="popTxt">10,0</b></button>
+  <div class="spacer"></div>
+  <button class="round" id="bGoals" title="Metas"><span class="badge" id="goalBadge">0</span></button>
+  <button class="round" id="bSet" title="Configurações"></button>
+</header>
+<div class="titlebar"><span id="cafeTitle">Café Cantinho</span><span id="visitWho"></span>
+  <div class="tbrow"><button class="openbtn" id="bOpen" title="Abrir ou fechar o café"></button></div>
+</div>
+<div class="orders" id="orders"></div>
+
+<div class="zoom">
+  <button id="zIn" title="Aproximar"></button>
+  <button id="zOut" title="Afastar"></button>
+  <button id="zFit" title="Centralizar"></button>
+</div>
+
+<!-- bottom dock -->
+<nav class="dock" id="dock">
+  <button id="bShop"><span>Loja</span></button>
+  <button id="bEdit"><span>Decorar</span></button>
+  <button id="bMenu"><span>Cardápio</span></button>
+  <button id="bInv"><span>Inventário</span><span class="badge" id="invBadge">0</span></button>
+  <button id="bStaff"><span>Equipe</span></button>
+  <button id="bNeigh"><span>Vizinhos</span></button>
+</nav>
+<div class="editbar">
+  <div class="ehint" id="editHint">Arraste os móveis para reorganizar</div>
+  <button class="btn ghost" id="bEditShop">Loja</button>
+  <button class="btn" id="bDone">Concluir</button>
+</div>
+<div class="visitbar">
+  <button class="btn ghost" id="vBack"><span>Voltar</span></button>
+  <button class="btn" id="vTip"><span>Gorjeta</span></button>
+  <button class="btn rose" id="vGift"><span>Presente</span></button>
+</div>
+
+<div class="toolbar" id="toolbar"></div>
+
+<div class="shade" id="shade"></div>
+<section class="panel" id="panel">
+  <div class="ribbon"><h2 id="panelTitle"></h2><button class="pclose" id="panelClose" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#6b4430" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
+  <div class="pbody" id="panelBody"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading"><div class="lcup"><i></i><i></i><i></i></div><p>Abrindo o café…</p><small class="credit">Modelos 3D: KayKit por Kay Lousberg e Mini Characters por Kenney (CC0)</small></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

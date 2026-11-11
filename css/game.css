@@ -1,0 +1,465 @@
+:root{
+  --cream:#fff8ee; --paper:#fffaf3; --brown:#6b4430; --brown2:#8a5a3e; --wood:#c98f5c; --wood2:#a8744a;
+  --mute:#a7856f; --rose:#ef8f8a; --rose2:#d9706b; --sage:#8fc28a; --sage2:#6fa66a; --butter:#f7d58b; --butter2:#e0b453; --line:#ecd6bf;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#f6dcc2;color:var(--brown);font-family:Fredoka,system-ui,sans-serif;touch-action:none}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+canvas#cv{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+svg{display:block;width:100%;height:100%}
+
+/* ---------- top HUD ---------- */
+.hud{position:fixed;top:calc(8px + var(--safe-t));left:8px;right:8px;display:flex;align-items:center;gap:10px;z-index:10;pointer-events:none}
+.hud>*{pointer-events:auto}
+.lvl{font:inherit;color:inherit;cursor:pointer;flex:none;display:flex;align-items:center;background:var(--paper);border:3px solid var(--brown2);border-radius:999px;padding:3px 12px 3px 4px;box-shadow:0 3px 0 var(--brown2)}
+.lvlbadge{position:relative;width:34px;height:34px;margin:-2px 6px -2px 0;flex:none;filter:drop-shadow(0 2px 0 rgba(107,68,48,.35))}
+.lvlbadge b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 15px 'Baloo 2',Fredoka;color:#fff;text-shadow:0 1px 0 #5c3f99;padding-top:2px}
+.xp{display:flex;flex-direction:column;gap:1px}
+.xpbar{width:76px;height:10px;border-radius:9px;background:#efe2d2;border:2px solid #d9c2a8;overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(#c8b2f0,#9c7ce0);border-radius:9px;transition:width .4s}
+.xp small{font-size:10px;font-weight:600;color:var(--mute);line-height:1}
+.res{display:flex;align-items:center;gap:6px;flex:none;background:var(--paper);border:3px solid var(--brown2);border-radius:999px;padding:4px 13px 4px 5px;box-shadow:0 3px 0 var(--brown2);font:800 16px 'Baloo 2',Fredoka;line-height:1}
+.ric{width:22px;height:22px;margin:0;flex:none;filter:drop-shadow(0 2px 0 rgba(107,68,48,.3))}
+.spacer{flex:1}
+.round{position:relative;width:44px;height:44px;border-radius:50%;background:var(--paper);border:3px solid var(--brown2);box-shadow:0 3px 0 var(--brown2);padding:6px}
+.round .bi{display:block;width:100%;height:100%}
+.round:active,.dock button:active,.btn:active,.cbtn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--brown2)}
+.badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:999px;background:var(--rose2);color:#fff;font:700 12px Fredoka;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;z-index:2}
+.titlebar{position:fixed;top:calc(58px + var(--safe-t));left:50%;transform:translateX(-50%);z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.titlebar #cafeTitle{font:800 18px 'Baloo 2',Fredoka;color:var(--brown);text-shadow:0 2px 0 #fff6ea;white-space:nowrap}
+.titlebar #visitWho{font-size:12px;font-weight:600;color:var(--mute)}
+body:not(.visiting) .titlebar #visitWho{display:none}
+.orders{position:fixed;left:10px;top:calc(110px + var(--safe-t));z-index:9;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.orders .olabel{font-size:11px;font-weight:700;color:var(--brown2);background:var(--paper);border-radius:8px;padding:1px 8px;align-self:flex-start;border:2px solid var(--line)}
+.ord{position:relative;width:46px;height:46px;background:var(--paper);border:3px solid var(--wood);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 var(--wood2)}
+.ord b{position:absolute;right:-7px;bottom:-7px;background:var(--rose2);color:#fff;font-size:11px;border-radius:999px;min-width:19px;height:19px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+
+.zoom{position:fixed;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:9}
+.zoom button{width:38px;height:38px;border-radius:12px;background:var(--paper);border:3px solid var(--brown2);box-shadow:0 3px 0 var(--brown2);padding:5px}
+.zoom .bi{display:block;width:100%;height:100%}
+
+/* ---------- bottom dock ---------- */
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--safe-b));z-index:10;display:flex;gap:6px;padding:7px;background:linear-gradient(#d9a571,#c08a5e);border:3px solid var(--brown2);border-radius:24px;box-shadow:0 5px 0 var(--brown2),0 10px 24px rgba(107,68,48,.25)}
+.dock button{position:relative;width:72px;height:66px;background:var(--paper);border:3px solid var(--brown2);border-radius:16px;box-shadow:0 3px 0 var(--brown2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font:700 12px Fredoka;padding:4px 2px 3px}
+.dock .bi{width:34px;height:34px;display:block}
+.editbar,.visitbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + var(--safe-b));z-index:10;display:none;align-items:center;gap:8px;padding:8px;background:var(--paper);border:3px solid var(--brown2);border-radius:22px;box-shadow:0 5px 0 var(--brown2);max-width:calc(100% - 20px)}
+.ehint{font-weight:600;font-size:13px;padding:0 8px;color:var(--brown2)}
+body.editing .dock, body.visiting .dock{display:none}
+body.editing:not(.visiting) .editbar{display:flex}
+body.visiting .visitbar{display:flex}
+body.visiting .zoom{top:auto;bottom:100px;transform:none}
+
+/* ---------- buttons ---------- */
+.btn{background:linear-gradient(#ffe39c,var(--butter));border:3px solid var(--butter2);border-radius:16px;padding:10px 16px;font:700 15px Fredoka;box-shadow:0 3px 0 #c99a3e;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn .bi{width:22px;height:22px;display:block}
+.btn.ghost{background:#fff;border-color:var(--line);box-shadow:0 3px 0 #d9c2a8}
+.btn.rose{background:linear-gradient(#f7aaa5,var(--rose));border-color:var(--rose2);color:#fff;box-shadow:0 3px 0 #b85a55}
+.btn.big{font-size:17px;padding:14px 22px}
+.btn:disabled,.cbtn:disabled{opacity:.5;filter:grayscale(.4);cursor:default}
+
+/* ---------- edit toolbar ---------- */
+.toolbar{position:fixed;z-index:11;transform:translate(-50%,0);display:none;gap:6px;padding:6px;background:var(--paper);border:3px solid var(--brown2);border-radius:18px;box-shadow:0 4px 0 var(--brown2)}
+.toolbar.on{display:flex}
+.toolbar button{display:flex;flex-direction:column;align-items:center;gap:1px;font:700 11px Fredoka;padding:4px 8px;border-radius:12px;background:#fff;border:2px solid var(--line);min-width:60px}
+.toolbar button.ok{background:linear-gradient(#a8d9a2,var(--sage));border-color:var(--sage2);color:#fff}
+.toolbar .tic{width:24px;height:24px;display:block}
+.toolbar button.ok .tic svg path{stroke:#fff}
+
+/* ---------- panel ---------- */
+.shade{position:fixed;inset:0;background:rgba(70,40,25,.35);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.shade.open{opacity:1;pointer-events:auto}
+.panel{position:fixed;z-index:21;left:50%;top:50%;width:min(680px,calc(100% - 24px));max-height:calc(100% - 120px);transform:translate(-50%,-46%) scale(.96);opacity:0;pointer-events:none;transition:all .18s;display:flex;flex-direction:column;background:var(--paper);border:4px solid var(--brown2);border-radius:26px;box-shadow:0 7px 0 var(--brown2),0 20px 50px rgba(70,40,25,.35)}
+.panel.small{width:min(440px,calc(100% - 24px))}
+.panel.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.ribbon{position:relative;margin:-22px 24px 0;background:linear-gradient(#e8837d,#d9706b);border:4px solid #a8504b;border-radius:16px;padding:8px 52px 8px 14px;box-shadow:0 4px 0 #a8504b}
+.ribbon h2{margin:0;display:flex;align-items:center;gap:8px;font:800 20px 'Baloo 2',Fredoka;color:#fff;text-shadow:0 2px 0 #a8504b;line-height:1.1}
+.ptic{width:30px;height:30px;flex:none;background:#fffaf3;border-radius:10px;padding:3px;border:2px solid #a8504b}
+.pclose{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:#fffaf3;border:3px solid #a8504b;padding:5px}
+.pbody{overflow:auto;padding:16px 16px 18px;-webkit-overflow-scrolling:touch}
+.sub{margin:0 0 12px;color:var(--mute);font-size:14px;line-height:1.35}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tabs button{background:#fff;border:3px solid var(--line);border-radius:999px;padding:6px 14px;font:700 13px Fredoka;box-shadow:0 2px 0 var(--line)}
+.tabs button.on{background:var(--butter);border-color:var(--butter2);box-shadow:0 2px 0 var(--butter2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.gtitle{grid-column:1/-1;font:800 15px 'Baloo 2',Fredoka;margin:8px 0 4px;color:var(--brown2)}
+.card{position:relative;background:#fff;border:3px solid var(--line);border-radius:18px;padding:8px 8px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;box-shadow:0 3px 0 var(--line)}
+.card.active{border-color:var(--sage);box-shadow:0 3px 0 var(--sage2)}
+.card.locked .thumb{filter:grayscale(.6) opacity(.6)}
+.thumb{width:76px;height:72px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 60%,#fbefe1,#fff 70%);border-radius:14px}
+.bigic{width:46px;height:46px;display:block}
+.cname{font-weight:700;font-size:14px;line-height:1.15}
+.cdesc{font-size:12px;color:var(--mute);line-height:1.35}
+.cdesc small{font-size:11px}
+.mi{display:inline-block;width:15px;height:15px;vertical-align:-3px;margin-right:2px}
+.cbtn{margin-top:auto;width:100%;background:linear-gradient(#ffe39c,var(--butter));border:2px solid var(--butter2);border-radius:12px;padding:7px 6px;font:700 13px Fredoka;box-shadow:0 2px 0 #c99a3e;display:flex;align-items:center;justify-content:center;gap:2px}
+.cbtn.ghost{background:#fff;border-color:var(--line);box-shadow:0 2px 0 #d9c2a8;margin-top:5px}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.acts .btn{flex:1;min-width:120px}
+.cookrow{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.cookrow canvas,.cookrow img{flex:none;background:radial-gradient(circle at 50% 60%,#fbefe1,#fff6ec);border-radius:16px}
+.pbar{height:12px;background:#efe2d2;border:2px solid #d9c2a8;border-radius:9px;overflow:hidden;margin:6px 0}
+.pbar i{display:block;height:100%;background:linear-gradient(#b5e0b0,var(--sage));border-radius:9px}
+.pbar.pat i{background:linear-gradient(#f7d58b,#e8a35b)}
+.txt:focus{outline:none;border-color:var(--butter2)}
+.txt{width:100%;font:500 16px Fredoka;padding:11px 13px;border-radius:14px;border:3px solid var(--line);background:#fff;color:var(--brown);margin:4px 0;user-select:text;-webkit-user-select:text}
+.goals{display:flex;flex-direction:column;gap:8px}
+.goal{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid var(--line);border-radius:16px;padding:10px 12px}
+.goal.done{border-color:var(--butter2);background:#fffbef}
+.gtxt{flex:1;min-width:0}
+.gtxt b{font-size:14px}
+.gtxt small{font-size:11px;color:var(--mute)}
+.grew{font-weight:700;font-size:13px;white-space:nowrap}
+.goal .cbtn{width:auto;margin:0;padding:7px 12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-top:14px}
+.stats div{background:#fff7ec;border:2px dashed var(--line);border-radius:14px;padding:10px;text-align:center}
+.stats b{display:block;font:800 22px 'Baloo 2',Fredoka}
+.stats small{font-size:11px;color:var(--mute)}
+.setrow{display:flex;align-items:center;justify-content:space-between;font-weight:600;margin:14px 0 6px}
+.toggle{width:52px;height:30px;border-radius:999px;background:#e6d6c4;position:relative;border:2px solid #d4bfa7}
+.toggle i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on{background:var(--sage)}.toggle.on i{left:24px}
+.help p{font-size:13px;line-height:1.45;margin:0 0 8px}
+.expand{grid-column:1/-1;text-align:center;padding:10px}
+.expand p{margin:4px 0}
+.empty{grid-column:1/-1;color:var(--mute);font-size:14px;text-align:center;padding:8px}
+
+.toast{position:fixed;left:50%;top:calc(96px + var(--safe-t));transform:translate(-50%,-8px);background:var(--brown);color:#fff;padding:10px 18px;border-radius:16px;font-weight:600;font-size:14px;z-index:40;opacity:0;transition:all .25s;pointer-events:none;max-width:90%;text-align:center;box-shadow:0 4px 0 #4a2e20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.loading{position:fixed;inset:0;z-index:50;background:#f6dcc2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .4s;font:800 18px 'Baloo 2',Fredoka}
+.loading.gone{opacity:0;pointer-events:none}
+.lcup{width:54px;height:44px;border:5px solid var(--brown2);border-top:none;border-radius:0 0 22px 22px;position:relative;background:#fff}
+.lcup i{position:absolute;top:-22px;width:6px;height:16px;border-radius:6px;background:#e4cbb2;animation:st 1.4s infinite}
+.lcup i:nth-child(1){left:10px}.lcup i:nth-child(2){left:22px;animation-delay:.3s}.lcup i:nth-child(3){left:34px;animation-delay:.6s}
+@keyframes st{0%{opacity:0;transform:translateY(6px)}50%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+
+@media (max-width:640px){
+  .hud{gap:6px;left:6px;right:6px}
+  .xpbar{width:44px}
+  .lvl{padding:2px 9px 2px 3px}
+  .lvlbadge{width:30px;height:30px;margin-right:4px}
+  .res{font-size:14px;padding:3px 9px 3px 4px;gap:4px}
+  .ric{width:19px;height:19px}
+  .round{width:38px;height:38px;padding:5px}
+  .orders{top:calc(118px + var(--safe-t))}
+  .titlebar{top:calc(58px + var(--safe-t))}
+  .dock{gap:4px;padding:5px;border-radius:20px;width:calc(100% - 16px);justify-content:space-between}
+  .dock button{flex:1;width:auto;height:60px;font-size:10.5px;border-radius:14px}
+  .dock .bi{width:30px;height:30px}
+  .zoom{top:auto;bottom:100px;transform:none}
+  .panel{top:auto;bottom:0;left:0;width:100%!important;transform:translateY(30px);border-radius:26px 26px 0 0;max-height:calc(100% - 70px);border-bottom:none;box-shadow:0 -6px 30px rgba(70,40,25,.3)}
+  .panel.open{transform:none}
+  .pbody{padding-bottom:calc(20px + var(--safe-b))}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  .editbar .ehint{display:none}
+}
+
+/* ---------- 3D overlays ---------- */
+#overlay{position:fixed;inset:0;pointer-events:none;z-index:5;--k:1}
+.ov{position:absolute;left:0;top:0;will-change:transform}
+.ov>*{transform:translate(-50%,-100%) scale(var(--k));transform-origin:50% 100%}
+.st.cook,.bub{display:flex;flex-direction:column;align-items:center}
+.ring{position:relative;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--c,#8fc28a) var(--p),rgba(255,250,243,.9) 0);padding:4px;box-shadow:0 3px 8px rgba(90,50,30,.25)}
+.ring .fimg{width:100%;height:100%;border-radius:50%;background:#fffaf3;display:block;object-fit:contain;padding:2px}
+.st.cook>div{transform:translate(-50%,-100%) scale(var(--k))}
+.st.cook small{position:absolute;left:0;top:0;transform:translate(-50%,2px) scale(var(--k));background:#6b4430;color:#fff;font:700 10px Fredoka;border-radius:8px;padding:1px 6px;white-space:nowrap}
+.st.idle i{display:flex;width:24px;height:24px;border-radius:50%;background:rgba(255,250,243,.88);border:2px solid #c9a27a;color:#8a5a3e;font:700 16px/1 Fredoka;align-items:center;justify-content:center;font-style:normal;opacity:.85;box-shadow:0 2px 4px rgba(90,50,30,.2);animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{50%{transform:translate(-50%,-100%) scale(calc(var(--k)*1.12))}}
+.st.ready b{display:block;background:linear-gradient(#a8e09f,#6fbf68);color:#fff;font:800 13px 'Baloo 2',Fredoka;padding:3px 10px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 2px #6fbf68,0 4px 14px rgba(111,191,104,.6);animation:hop .9s ease-in-out infinite}
+@keyframes hop{50%{transform:translate(-50%,-115%) scale(calc(var(--k)*1.06))}}
+.st.stock b{display:block;min-width:24px;height:22px;border-radius:999px;background:#fffaf3;border:2px solid #c08a5e;color:#6b4430;font:700 12px/18px Fredoka;text-align:center;padding:0 5px;box-shadow:0 2px 4px rgba(90,50,30,.2)}
+.bub>*{filter:drop-shadow(0 3px 5px rgba(90,50,30,.25))}
+.bub .ring{width:52px;height:52px;padding:6px}
+.bub.good .ring{--c:#8fc28a}.bub.mid .ring{--c:#f2c25b}.bub.bad .ring{--c:#e8706a;animation:wob .5s ease-in-out infinite}
+@keyframes wob{25%{transform:translate(-52%,-100%) scale(var(--k)) rotate(-4deg)}75%{transform:translate(-48%,-100%) scale(var(--k)) rotate(4deg)}}
+.bub .menuic{display:block;width:30px;height:36px;border-radius:6px;background:#fffaf3;border:3px solid #c99a5c;box-shadow:inset 0 9px 0 -6px #c99a5c,inset 0 17px 0 -14px #e3cbb0,inset 0 25px 0 -22px #e3cbb0}
+.bub .dots{display:block;background:#fffaf3;border-radius:999px;padding:0 10px;font:700 18px/26px Fredoka;color:#8a5a3e}
+.float{position:absolute;left:0;top:0;pointer-events:none;z-index:6;font:800 15px 'Baloo 2',Fredoka;display:flex;align-items:center;gap:3px;white-space:nowrap;color:#8a5a1e;text-shadow:0 2px 0 #fffaf3,0 0 6px #fffaf3;animation:floatUp 1.3s ease-out forwards}
+.float .fic{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#f7c948 45%,#c98a1e);box-shadow:0 1px 0 #b8791a}
+.float.xp{color:#7a5ec0}.float.xp .fic{border-radius:3px;background:#a98be0;clip-path:polygon(50% 0,62% 36%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 36%)}
+.float.neg{color:#c0533a}
+@keyframes floatUp{0%{opacity:0;margin-top:10px}15%{opacity:1}100%{opacity:0;margin-top:-44px}}
+.pop{position:absolute;left:0;top:0;width:28px;height:28px;margin:-14px;animation:popUp 1.2s ease-out forwards}
+.pop.happy{background:radial-gradient(circle at 35% 30%,#ffd3dc 0 15%,transparent 16%),#ef6f86;clip-path:path('M14 26 C2 18 0 10 5 5 C9 1 13 4 14 7 C15 4 19 1 23 5 C28 10 26 18 14 26Z')}
+.pop.angry{background:#e8574f;clip-path:polygon(50% 0,60% 35%,100% 30%,68% 55%,90% 100%,50% 72%,10% 100%,32% 55%,0 30%,40% 35%)}
+.pop.ok,.pop.sad{background:#9cc1e0;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
+@keyframes popUp{0%{opacity:0;scale:.4}20%{opacity:1;scale:1.15}100%{opacity:0;translate:0 -30px;scale:1}}
+.flyer{position:fixed;width:22px;height:22px;z-index:45;pointer-events:none}
+.flyer.coin{border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#f7c948 45%,#c98a1e);box-shadow:0 2px 0 #b8791a,0 0 8px rgba(247,201,72,.7)}
+.flyer.xp{background:#b49cf0;clip-path:polygon(50% 0,62% 36%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 36%);filter:drop-shadow(0 0 4px #c8b2f0)}
+.spark{position:fixed;width:8px;height:8px;border-radius:50%;z-index:30;pointer-events:none;box-shadow:0 0 6px currentColor}
+.bump{animation:bump .35s ease}
+@keyframes bump{40%{transform:scale(1.12)}}
+.celebrate{position:fixed;inset:0;z-index:60;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.celebrate b{font:800 54px 'Baloo 2',Fredoka;color:#fff;text-shadow:0 4px 0 #a8504b,0 0 30px rgba(255,210,120,.9);animation:lvIn 2.2s ease forwards}
+.celebrate i{position:absolute;top:-20px;width:10px;height:14px;border-radius:3px;animation:conf 2.2s ease-in forwards}
+@keyframes lvIn{0%{transform:scale(.2);opacity:0}20%{transform:scale(1.15);opacity:1}35%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-40px)}}
+@keyframes conf{to{transform:translate(var(--x),110vh) rotate(720deg)}}
+
+/* ---------- cards & detail ---------- */
+.card.tappable{cursor:pointer;transition:transform .12s}
+.card.tappable:hover{transform:translateY(-2px)}
+.card.glow{border-color:#f7d58b;box-shadow:0 3px 0 #e0b453,0 0 18px rgba(247,213,139,.8);animation:glowp 1.6s ease-in-out infinite}
+@keyframes glowp{50%{box-shadow:0 3px 0 #e0b453,0 0 30px rgba(247,213,139,1)}}
+.cbtn.short{background:#fff1ee;border-color:#f2c0b8;color:#c0533a;box-shadow:0 2px 0 #f2c0b8;opacity:1!important;filter:none!important}
+.th3d{display:block;object-fit:contain}
+.thumb .th3d{width:100%;height:100%}
+.seg{display:flex;background:#efe2d2;border-radius:999px;padding:3px;gap:2px}
+.seg button{padding:5px 11px;border-radius:999px;font:700 12px Fredoka}
+.seg button.on{background:#fff;box-shadow:0 2px 0 #d9c2a8}
+.itemdetail{display:flex;gap:14px;align-items:flex-start}
+.bigthumb{position:relative;flex:none;width:150px;height:150px;border-radius:22px;background:radial-gradient(circle at 50% 62%,#fff3e3,#fbe3cc 70%);display:flex;align-items:center;justify-content:center;border:3px solid var(--line)}
+.itemdetail.locked .bigthumb img{filter:grayscale(.7) opacity(.65)}
+.lockbadge{position:absolute;right:8px;top:8px;width:34px;height:34px;background:#fffaf3;border-radius:50%;padding:5px;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+.info{flex:1;min-width:0}
+.info p{margin:6px 0 10px;font-size:14px;line-height:1.4}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font:700 11px Fredoka;background:#f4e6d3;color:#8a5a3e;border-radius:999px;padding:3px 9px}
+.tag.pink{background:#fde3e6;color:#c94a63}.tag.blue{background:#e1eef9;color:#3f6e94}.tag.green{background:#e4f3e1;color:#4f8a43}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:2px dashed var(--line)}
+.mini{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.mini span{display:flex;flex-direction:column;align-items:center;width:58px;font-size:10px;text-align:center;color:var(--mute)}
+.mini span.lk img{filter:grayscale(.8) opacity(.5)}
+.status{margin-top:12px;border-radius:14px;padding:10px 12px;font-weight:700;font-size:14px;text-align:center}
+.status.ok{background:#e4f3e1;color:#4f8a43}.status.short{background:#fff1ee;color:#c0533a}.status.lock{background:#f1ebe4;color:#8a5a3e}
+@media (max-width:520px){.itemdetail{flex-direction:column;align-items:center}.bigthumb{width:170px;height:170px}}
+
+/* ---------- progression ---------- */
+.progtop{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,#f6efff,#fff6ec);border:3px solid #e2d4f6;border-radius:20px;padding:12px;margin-bottom:14px}
+.lvbig{position:relative;width:74px;height:74px;flex:none;filter:drop-shadow(0 3px 0 rgba(92,63,153,.35))}
+.lvbig b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 26px 'Baloo 2',Fredoka;color:#fff;text-shadow:0 2px 0 #5c3f99;padding-top:4px}
+.progtxt{flex:1;display:flex;flex-direction:column;gap:3px}
+.progtxt>b{font:800 19px 'Baloo 2',Fredoka}
+.progtxt small{font-size:12px;color:var(--mute)}
+.progtxt .hint{font-size:11px}
+.pbar.xp i{background:linear-gradient(#d4c2f6,#9c7ce0)}
+.track{position:relative;display:flex;flex-direction:column;gap:10px;padding-left:4px}
+.track:before{content:'';position:absolute;left:23px;top:20px;bottom:20px;width:4px;background:#efe2d2;border-radius:4px}
+.lvrow{position:relative;display:flex;gap:12px}
+.lvnode{flex:none;width:42px;height:42px;border-radius:50%;background:#efe2d2;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font:800 16px 'Baloo 2',Fredoka;color:#a7856f;z-index:1;box-shadow:0 2px 0 #d9c2a8}
+.lvrow.done .lvnode{background:#a8d9a2;color:#fff}
+.lvrow.now .lvnode{background:#9c7ce0;color:#fff;box-shadow:0 0 0 4px #e2d4f6,0 2px 0 #7a5ec0;animation:glowp2 1.6s infinite}
+@keyframes glowp2{50%{box-shadow:0 0 0 7px #ece2fa,0 2px 0 #7a5ec0}}
+.lvrow.next .lvnode{background:#f7d58b;color:#8a5a1e}
+.lvbody{flex:1;min-width:0;background:#fff;border:3px solid var(--line);border-radius:16px;padding:8px 10px}
+.lvrow.now .lvbody{border-color:#c8b2f0}
+.lvrow.future .lvbody{background:#fbf7f2}
+.lvtitle{font:700 12px Fredoka;color:var(--mute);margin-bottom:6px}
+.lvitems{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:6px;background:#fffaf3;border:2px solid var(--line);border-radius:14px;padding:3px 9px 3px 3px;font:700 12px Fredoka;line-height:1.1}
+.chip img,.chip canvas,.chip .bigic{width:40px;height:40px;flex:none}
+.chip small{display:block;font:500 10px Fredoka;color:var(--mute)}
+.chip.owned{border-color:#a8d9a2;background:#f3fbf1}
+.chip.avail{border-color:#f7d58b;background:#fffbef}
+.chip.locked img,.chip.locked canvas{filter:grayscale(.8) opacity(.55)}
+.chip.locked{color:#a7856f}
+.chip.tappable{cursor:pointer}
+.muted{color:var(--mute);font-size:12px}
+.lvhero{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:6px}
+.lvhero .lvbig{animation:lvIn 1s ease}
+.credit{font:500 11px Fredoka;color:#a7856f;margin-top:10px}
+
+@media (max-width:374px){ .xp small{display:none} .xpbar{width:34px} .res{font-size:13px;padding:3px 7px 3px 3px} .round{width:34px;height:34px} }
+
+/* ---------- open/closed + world clock ---------- */
+.tbrow{display:flex;gap:8px;align-items:center;pointer-events:auto}
+.openbtn{display:flex;align-items:center;gap:6px;background:var(--paper);border:3px solid #6fae63;border-radius:999px;padding:3px 11px 3px 6px;box-shadow:0 3px 0 #4f8a43;font:800 13px 'Baloo 2',Fredoka;color:#4f8a43}
+.openbtn i{width:12px;height:12px;border-radius:50%;background:#7fcf6f;box-shadow:0 0 0 3px #dff3d9,0 0 8px #7fcf6f}
+.openbtn small{font:600 10px Fredoka;color:var(--mute)}
+.openbtn.closed{border-color:#d9706b;box-shadow:0 3px 0 #a8504b;color:#c0533a}
+.openbtn.closed i{background:#e8706a;box-shadow:0 0 0 3px #fbe1de}
+.openbtn.flip{animation:flipb .5s ease}
+@keyframes flipb{0%{transform:rotateX(0)}50%{transform:rotateX(90deg) scale(1.1)}100%{transform:rotateX(0)}}
+.clock{display:flex;align-items:center;gap:5px;background:rgba(255,250,243,.92);border:3px solid var(--line);border-radius:999px;padding:3px 10px 3px 5px;font:800 13px 'Baloo 2',Fredoka}
+.clock small{font:600 10px Fredoka;color:var(--mute)}
+.cic{width:16px;height:16px;border-radius:50%}
+.cic.sun{background:radial-gradient(circle,#fff3b0 30%,#f7c948 60%);box-shadow:0 0 6px #f7c948}
+.cic.moon{background:#e9e4f7;box-shadow:inset -5px -2px 0 #b8a9e0,0 0 6px #c8b2f0}
+.ring canvas.fimg{width:100%;height:100%;border-radius:50%;display:block}
+canvas.th3d.loading{background:radial-gradient(circle,#fff3e3,#fbe3cc);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.6}}
+.card.reveal{animation:rev .45s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes rev{from{opacity:0;transform:translateY(14px) scale(.85)}}
+@media (max-width:640px){.titlebar{top:calc(54px + var(--safe-t))}.titlebar #cafeTitle{font-size:16px}.orders{top:calc(132px + var(--safe-t))}}
+
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px;margin-bottom:4px}
+.pick{padding:4px;border:2px solid #e4d3bd;background:#fffaf3;border-radius:14px;cursor:pointer;line-height:0}
+.pick.on{border-color:var(--rose);background:#fff1ec;box-shadow:0 0 0 3px rgba(217,83,74,.15)}
+.pick canvas{border-radius:10px}
+
+.ov.st.ready.warn b{background:linear-gradient(#f6b45c,#e0873a);border-color:#c9712c;animation:pulsew .7s ease-in-out infinite}
+.ov.st.ready.burnt b{background:linear-gradient(#8d7a70,#5e514a);border-color:#4a3f39;color:#fff}
+@keyframes pulsew{50%{transform:scale(1.08)}}
+.ov.st.cook.wait{opacity:.85}
+
+.ov.st.stock.warn b{background:linear-gradient(#f7d58b,#e8a35b);border-color:#c9712c}
+.ov.st.stock.bad b{background:linear-gradient(#a99a90,#6f615a);border-color:#4a3f39;color:#fff;font-size:11px;padding:0 6px}
+
+.ov.st.dirty b{background:linear-gradient(#cdbca8,#a08c76);border-color:#7d6a56;color:#fff;font-size:11px;padding:0 7px}
+
+.ov.bub.drink{pointer-events:auto;cursor:pointer;animation:dbob 1.6s ease-in-out infinite}
+.ov.bub.drink .dglass{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#fffdf8,#ffeccd);border:2.5px solid #e8b44a;box-shadow:0 3px 0 rgba(160,110,40,.3),0 0 0 4px rgba(255,214,120,.35);display:flex;align-items:center;justify-content:center}
+.ov.bub.drink .fimg{width:28px;height:28px}
+.ov.bub.drink:active{transform:scale(.92)}
+@keyframes dbob{50%{transform:translateY(-4px)}}
+
+.res.gem b{color:#2f9c83}
+.res.gem{background:linear-gradient(#f2fbf8,#dff4ee)}
+
+.okneed{color:#3f8d5e;font-weight:800}
+.noneed{color:#c0533a;font-weight:800}
+
+.pop.face .fwrap,.ov.face .fwrap{position:relative;width:42px;height:42px;filter:drop-shadow(0 3px 0 rgba(107,68,48,.28));animation:fbob 2.4s ease-in-out infinite}
+.pop.face svg,.ov.face svg{width:100%;height:100%;display:block}
+.pop.face.m-love .fwrap,.ov.face.m-love .fwrap{animation:fpulse 1.1s ease-in-out infinite}
+.pop.face.m-impatient .fwrap,.ov.face.m-impatient .fwrap{animation:ftilt 1.5s ease-in-out infinite}
+.pop.face.m-angry .fwrap,.ov.face.m-angry .fwrap{animation:fshake .35s ease-in-out infinite}
+.pop.face.m-sad .fwrap,.ov.face.m-sad .fwrap{animation:fdroop 2.6s ease-in-out infinite}
+.ov.face.vip .fwrap{filter:drop-shadow(0 0 10px rgba(255,205,70,.95)) drop-shadow(0 3px 0 rgba(107,68,48,.3))}
+.ov.face.vip .crown{position:absolute;left:50%;top:-12px;margin-left:-13px;width:26px;height:16px;background:linear-gradient(#ffe489,#e8b44a);clip-path:polygon(0 100%,100% 100%,100% 36%,78% 60%,50% 6%,22% 60%,0 36%);filter:drop-shadow(0 1px 0 #b98a24)}
+@keyframes fbob{50%{transform:translateY(-3px)}}
+@keyframes fpulse{50%{transform:scale(1.12)}}
+@keyframes ftilt{25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+@keyframes fshake{25%{transform:translateX(-2.5px)}75%{transform:translateX(2.5px)}}
+@keyframes fdroop{50%{transform:translateY(2px) scale(.96)}}
+
+.qual{background:#fffaf3;border:2.5px solid #e4d3bd;border-radius:16px;padding:10px 12px;margin:4px 0 10px}
+.qrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font:800 15px 'Baloo 2',Fredoka;color:var(--brown2)}
+.qtag{background:linear-gradient(#ffe9b0,#f7cf7a);border:2px solid #d9a84e;border-radius:999px;padding:1px 10px;font-size:13px}
+
+.pop.face{position:absolute;left:0;top:0;width:auto;height:auto;margin:0;pointer-events:none;animation:popface 1.7s ease-out forwards}
+.pop.face .fwrap{transform-origin:50% 100%}
+@keyframes popface{0%{opacity:0;transform:translate(-50%,-100%) scale(.5)}14%{opacity:1;transform:translate(-50%,-110%) scale(1.12)}26%{transform:translate(-50%,-108%) scale(1)}78%{opacity:1;transform:translate(-50%,-128%) scale(1)}100%{opacity:0;transform:translate(-50%,-150%) scale(.9)}}
+.ov.bub.drink{animation:none;opacity:.9}
+.ov.bub.drink.coming{animation:dbob 1.1s ease-in-out infinite;opacity:1}
+
+.rtag{display:inline-block;background:color-mix(in srgb,var(--rc) 22%,#fff);border:2px solid var(--rc);color:#4a3a2c;border-radius:999px;padding:0 8px;font:800 11px 'Baloo 2',Fredoka}
+.invcard.out{opacity:.72}
+.invcard .cbtn{display:none}
+.rtag.gemonly{--rc:#2f9c83;margin-left:5px}
+
+.ov.mkt{pointer-events:auto;cursor:pointer}
+.ov.mkt .mktbtn{background:linear-gradient(#fffaf2,#ffeccd);border:3px solid #c0533a;border-radius:999px;padding:2px 12px;box-shadow:0 3px 0 rgba(140,60,40,.45);font:800 14px 'Baloo 2',Fredoka;color:#a7402f;white-space:nowrap}
+.ov.mkt:active .mktbtn{transform:translateY(2px);box-shadow:0 1px 0 rgba(140,60,40,.45)}
+.ov.mkt.edge .mktbtn{opacity:.95;box-shadow:0 3px 0 rgba(140,60,40,.45),0 0 0 3px rgba(255,255,255,.55)}
+.ov.mkt .mktbtn::before{content:'';display:inline-block;width:12px;height:12px;margin-right:5px;border-radius:2px;background:repeating-linear-gradient(90deg,#c0533a 0 4px,#fffaf2 4px 8px);vertical-align:-1px}
+
+.bub .secs{display:block;margin:2px auto 0;width:fit-content;background:#fffaf3;border:2.5px solid #c9b49a;border-radius:999px;padding:0 7px;font:800 12px 'Baloo 2',Fredoka;color:#6b4430;box-shadow:0 2px 0 rgba(140,100,70,.3)}
+.bub.good .secs{border-color:#6fae6a;color:#3f7d44}
+.bub.mid .secs{border-color:#dba63c;color:#9a6a18}
+.bub.bad .secs{border-color:#d9534a;color:#a7402f;animation:wob .5s ease-in-out infinite}
+.bub .dchip{position:absolute;right:-9px;bottom:-5px;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#fffdf8,#ffeccd);border:2.5px solid #e8b44a;box-shadow:0 2px 0 rgba(160,110,40,.35);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bub .dchip .fimg{width:19px;height:19px;padding:0;background:none}
+.bub .dchip.coming{animation:dbob 1s ease-in-out infinite}
+
+/* sound panel */
+.songs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.song{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:14px;background:#fff7ec;border:2px solid #ecd9c2;text-align:left;font:600 14px Fredoka;color:#6b4430}
+.song small{font-weight:500;font-size:11px;opacity:.75}
+.song.on{border-color:var(--sage);background:#eef5e6}
+.song.locked{opacity:.55}
+.volrow{display:flex;align-items:center;gap:12px;margin:8px 0;font-weight:600}
+.volrow span{width:132px;flex:none}
+.volrow input{flex:1;accent-color:#c98a5a;min-width:0}
+.btn.small{padding:6px 14px;font-size:13px}
+
+/* staff name tags */
+.ov.nametag{pointer-events:none}
+.ov.nametag span{display:block;font:800 11px 'Baloo 2',Fredoka;line-height:15px;color:#fff;background:#8a5a3e;border:2px solid #fffaf3;border-radius:999px;padding:0 8px;white-space:nowrap;box-shadow:0 2px 0 rgba(90,50,30,.3);opacity:.92}
+.ov.nametag.owner span{background:#d9706b}
+.ov.nametag.waiter span{background:#6fa66a}
+.ov.nametag.chef span{background:#c99a3e}
+
+
+/* ======================= KAWAII PASTEL SKIN =======================
+   Cream paper, soft brown outlines, pastel tabs, chunky rounded shapes, flat cute colours.
+   (references: notebook recipe books and cosy shop sims) */
+:root{
+  --k-paper:#fff8ec; --k-paper2:#fbefdc; --k-line:#e9d6bd; --k-ink:#8a6248; --k-ink2:#c9a684; --k-text:#6b4a36;
+  --k-mint:#a8dcc6; --k-mint2:#7cc3a6; --k-pink:#f6b3b8; --k-pink2:#e98d96; --k-butter:#ffdf8e; --k-butter2:#f2be55;
+  --k-sky:#b4d8f2; --k-sky2:#86bde6; --k-lilac:#cfc0ec; --k-lilac2:#a995da; --k-peach:#ffc9a3; --k-peach2:#f2a272;
+  --grid:repeating-linear-gradient(0deg,transparent 0 21px,rgba(201,166,132,.18) 21px 22px),repeating-linear-gradient(90deg,transparent 0 21px,rgba(201,166,132,.18) 21px 22px);
+}
+/* ---- HUD chips: identical cream pills, icon sticker on the left ---- */
+.hud{gap:16px;left:16px}
+.hchip{position:relative;flex:none;display:flex;align-items:center;height:38px;width:110px;padding:0 12px 0 38px;border-radius:999px;
+  background:var(--k-paper);border:2.5px solid var(--k-ink2);box-shadow:0 3px 0 var(--k-ink2);font:800 16px/1 'Baloo 2',Fredoka;color:var(--k-text);cursor:default}
+button.hchip{cursor:pointer}
+.hchip .cval{position:relative;z-index:1;flex:1;text-align:center;white-space:nowrap}
+.hchip .cic{position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:42px;height:42px;z-index:2;display:block}
+.hchip .cic svg{width:100%;height:100%;display:block}
+.hchip .cfill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;z-index:0;transition:width .4s;background:var(--k-sky)}
+.c-gem .cval{color:#3f8f78}
+.c-pop.up{animation:popup .6s ease}.c-pop.down{animation:popdown .5s ease}
+.c-pop.max{background:#fff3c8}
+@keyframes popup{40%{transform:scale(1.12)}}
+@keyframes popdown{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}}
+.hchip .lvlbadge{margin:0}
+.hchip .lvlbadge #lvlStar{position:absolute;inset:0}
+.hchip .lvlbadge b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 15px 'Baloo 2',Fredoka;color:#fff;text-shadow:0 1px 0 #9b82d0;padding-top:3px}
+.round{background:var(--k-paper)!important;border:2.5px solid var(--k-ink2)!important;box-shadow:0 3px 0 var(--k-ink2)!important}
+.hud .round{flex:none}
+.zoom button{background:var(--k-paper);border:2.5px solid var(--k-ink2);box-shadow:0 3px 0 var(--k-ink2);border-radius:14px}
+.titlebar #cafeTitle{font-size:20px;color:var(--k-text);text-shadow:0 2px 0 #fff,0 0 8px #fff8ec}
+.openbtn{background:var(--k-paper);border:2.5px solid var(--k-mint2);box-shadow:0 3px 0 var(--k-mint2);color:#4f8f73}
+.openbtn.closed{border-color:var(--k-pink2);box-shadow:0 3px 0 var(--k-pink2);color:#c0626a}
+.badge{background:var(--k-pink2);border:2px solid #fff;box-shadow:none}
+/* ---- bottom dock: a cream tray of pastel tabs ---- */
+.dock{background:var(--k-paper);border:2.5px solid var(--k-ink2);box-shadow:0 4px 0 var(--k-ink2),0 10px 24px rgba(138,98,72,.18);border-radius:26px;padding:8px;gap:8px}
+.dock button{border:2.5px solid var(--k-ink2);box-shadow:0 3px 0 var(--k-ink2);border-radius:18px;color:var(--k-text);font:800 12px 'Baloo 2',Fredoka;text-shadow:none}
+.dock button .bi{filter:none}
+#bShop{background:var(--k-pink)} #bEdit{background:var(--k-lilac)} #bMenu{background:var(--k-butter)}
+#bInv{background:var(--k-sky)} #bStaff{background:var(--k-mint)} #bNeigh{background:var(--k-peach)}
+.round:active,.dock button:active,.btn:active,.cbtn:active,.hchip:active{transform:translateY(2px);box-shadow:0 1px 0 var(--k-ink2)!important}
+/* ---- buttons ---- */
+.btn{background:var(--k-butter);border:2.5px solid var(--k-butter2);box-shadow:0 3px 0 var(--k-butter2);color:var(--k-text);font:800 15px 'Baloo 2',Fredoka;border-radius:16px}
+.btn.ghost{background:#fff;border-color:var(--k-line);box-shadow:0 3px 0 var(--k-line)}
+.btn.rose{background:var(--k-pink);border-color:var(--k-pink2);box-shadow:0 3px 0 var(--k-pink2);color:var(--k-text)}
+.cbtn{background:var(--k-butter);border:2px solid var(--k-butter2);box-shadow:0 2px 0 var(--k-butter2);color:var(--k-text);font-weight:800;border-radius:12px}
+.cbtn.ghost{background:#fff;border-color:var(--k-line);box-shadow:0 2px 0 var(--k-line)}
+/* ---- panels: a notebook page on grid paper ---- */
+.shade{background:rgba(120,86,60,.28)}
+.panel{background:var(--k-paper);background-image:var(--grid);border:3px solid var(--k-ink2);box-shadow:0 6px 0 var(--k-ink2),0 24px 50px rgba(120,86,60,.28);border-radius:26px}
+.ribbon{background:var(--k-butter);border:2.5px solid var(--k-butter2);box-shadow:0 3px 0 var(--k-butter2);border-radius:14px;margin:-20px auto 0;width:fit-content;min-width:200px;max-width:calc(100% - 48px);padding:7px 48px 7px 12px}
+.ribbon h2{color:var(--k-text);text-shadow:none;font-size:19px}
+.ptic{background:#fff;border:2px solid var(--k-butter2)}
+.pclose{background:var(--k-pink);border:2.5px solid var(--k-pink2)}
+.pclose svg path{stroke:#fff}
+.tabs button{background:#fff;border:2px solid var(--k-line);box-shadow:0 2px 0 var(--k-line);color:var(--k-text)}
+.tabs button.on{background:var(--k-mint);border-color:var(--k-mint2);box-shadow:0 2px 0 var(--k-mint2)}
+.card{background:#fffdf8;border:2px solid var(--k-line);box-shadow:0 3px 0 var(--k-line);border-radius:18px}
+.card.active{border-color:var(--k-mint2);box-shadow:0 3px 0 var(--k-mint2)}
+.thumb{background:radial-gradient(circle at 50% 60%,#fdf0de,#fffdf8 70%)}
+.gtitle{color:var(--k-ink)}
+.sub{color:#a68770}
+.toast{background:var(--k-paper);color:var(--k-text);border:2.5px solid var(--k-ink2);box-shadow:0 3px 0 var(--k-ink2)}
+.ov.nametag span{border:2px solid #fff;box-shadow:0 2px 0 rgba(138,98,72,.3);font-weight:700}
+.ov.nametag.owner span{background:var(--k-pink2)} .ov.nametag.waiter span{background:var(--k-mint2)} .ov.nametag.chef span{background:var(--k-butter2)}
+/* ---- drink order: a calm little thought bubble (no bouncing) ---- */
+.ov.drinkb{pointer-events:auto;cursor:pointer;z-index:7}
+.ov.drinkb .dbub{position:relative;display:flex;flex-direction:column;align-items:center}
+.ov.drinkb .dglass{width:46px;height:46px;border-radius:50%;background:#fffdf8;border:2.5px solid var(--k-sky2);box-shadow:0 3px 0 var(--k-sky2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ov.drinkb .dglass .fimg{width:36px!important;height:36px!important;border-radius:50%;display:block;background:none;padding:0}
+.ov.drinkb .dbub::before,.ov.drinkb .dbub::after{content:'';position:absolute;border-radius:50%;background:#fffdf8;border:2px solid var(--k-sky2)}
+.ov.drinkb .dbub::before{width:10px;height:10px;left:5px;bottom:-5px}
+.ov.drinkb .dbub::after{width:6px;height:6px;left:0;bottom:-12px}
+.ov.drinkb:hover .dglass{background:#eef7ff}
+.ov.drinkb:active .dglass{transform:scale(.9)}   /* press feedback on the inner circle only: scaling the bubble itself replaced its centring transform and made it jump away mid-tap */
+.ov.drinkb .dglass{transition:transform .08s}
+.ov.drinkb{touch-action:none}
+/* ---- phones ---- */
+@media (max-width:640px){
+  .hud{gap:12px;left:12px;right:6px}
+  .hchip{height:32px;width:80px;padding:0 6px 0 27px;font-size:13px;border-width:2px}
+  .hchip .cic{width:33px;height:33px;left:-6px}
+  .hchip .lvlbadge b{font-size:12px}
+  .dock{gap:5px;padding:6px}
+}
+@media (max-width:480px){ .c-gem{display:none!important} .hud{gap:11px} .round{width:34px;height:34px;padding:4px} }
+/* dock icons sit on a cream sticker so pastel icons read on pastel tabs */
+.dock .bi{background:#fffaf2;border-radius:50%;padding:4px;box-shadow:0 0 0 2px rgba(255,255,255,.6);width:36px;height:36px}
+@media (max-width:640px){ .dock .bi{width:30px;height:30px;padding:3px} }
+
+/* neighbour invite box */
+.invite{background:#fffdf8;border:2px dashed var(--k-ink2);border-radius:18px;padding:10px 14px 4px;margin-bottom:14px}
+.mycode{display:block;font:700 13px/1.4 ui-monospace,Menlo,monospace;background:#fff3e2;border:2px solid var(--k-line);border-radius:12px;padding:8px 10px;word-break:break-all;user-select:all;-webkit-user-select:all;color:var(--k-text)}

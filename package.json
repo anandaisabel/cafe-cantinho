@@ -1,0 +1,12 @@
+{
+  "name": "cafe-cantinho",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Café Cantinho — jogo isométrico 3D de cafeteria para navegador",
+  "scripts": {
+    "build": "python3 build.py",
+    "serve": "python3 -m http.server 8766 --directory dist"
+  },
+  "dependencies": { "three": "0.170.0", "n8ao": "1.9.4", "postprocessing": "6.36.4" },
+  "devDependencies": { "esbuild": "^0.24.0", "@gltf-transform/core": "^4.1.0", "@gltf-transform/extensions": "^4.1.0", "@gltf-transform/functions": "^4.1.0" }
+}

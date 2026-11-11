@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#fff3e2"/>
+  <circle cx="256" cy="268" r="196" fill="#f9d9c4"/>
+  <!-- steam -->
+  <path d="M212 120c-18 22 18 38 0 62M262 108c-18 22 18 38 0 62M312 120c-18 22 18 38 0 62" fill="none" stroke="#e9b8a0" stroke-width="16" stroke-linecap="round"/>
+  <!-- saucer -->
+  <ellipse cx="256" cy="392" rx="170" ry="34" fill="#a8dcc6" stroke="#8a6248" stroke-width="12"/>
+  <!-- cup -->
+  <path d="M120 206h272v84c0 66-54 112-136 112S120 356 120 290z" fill="#fffaf2" stroke="#8a6248" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M392 232c46 0 62 18 62 42 0 30-26 48-70 50" fill="none" stroke="#8a6248" stroke-width="12" stroke-linecap="round"/>
+  <ellipse cx="256" cy="210" rx="134" ry="22" fill="#a8754f" stroke="#8a6248" stroke-width="12"/>
+  <!-- face -->
+  <circle cx="210" cy="282" r="12" fill="#8a6248"/><circle cx="302" cy="282" r="12" fill="#8a6248"/>
+  <path d="M236 306q20 18 40 0" fill="none" stroke="#8a6248" stroke-width="10" stroke-linecap="round"/>
+  <ellipse cx="178" cy="312" rx="20" ry="12" fill="#f49ba8"/><ellipse cx="334" cy="312" rx="20" ry="12" fill="#f49ba8"/>
+  <!-- heart -->
+  <path d="M256 360c-22-14-30-26-26-36 4-10 18-10 26 0 8-10 22-10 26 0 4 10-4 22-26 36z" fill="#f7a9b4" stroke="#8a6248" stroke-width="6"/>
+</svg>
