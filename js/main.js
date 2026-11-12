@@ -57,7 +57,18 @@ let lvFrom = null, lvTo = 0, lvTimer = 0;
 on('levelup', l => { if (lvFrom === null) lvFrom = l - 1; lvTo = Math.max(lvTo, l); clearTimeout(lvTimer); lvTimer = setTimeout(() => { const f = lvFrom, t = lvTo; lvFrom = null; lvTo = 0; UI.levelUp(t, f); }, 600); });
 
 let last = performance.now(), hudT = 0, saveT = 0, fpsT = 0, frames = 0, downgraded = false, ambT = 0;
+// The next frame is booked first and each frame is guarded: one bad frame used to stop the loop for good,
+// which froze the café until a reload.
+let loopErrors = 0;
 function loop(t) {
+  requestAnimationFrame(loop);
+  try { frame(t); }
+  catch (e) {
+    loopErrors++; window.__lastLoopError = String((e && e.stack) || e);
+    if (loopErrors < 5) console.error('frame error (game keeps running):', e);
+  }
+}
+function frame(t) {
   const dt = Math.min(.05, (t - last) / 1000); last = t; window.__frames = (window.__frames || 0) + 1;
   // Gameplay time only advances while the game is on screen; closing it freezes every timer.
   tickClock();
@@ -77,7 +88,6 @@ function loop(t) {
     if (!document.hidden && !document.getElementById('panel').classList.contains('open')) { frames++; fpsT += dt; }
     if (fpsT > 6) { const fps = frames / fpsT; frames = 0; fpsT = 0; if (fps < 22 && !downgraded && E.quality !== 'low' && !lockedQ()) { downgraded = true; setQuality(E.quality === 'high' ? 'medium' : 'low'); try { localStorage.removeItem('cc_quality'); } catch (e) { } } }
   }
-  requestAnimationFrame(loop);
 }
 const lockedQ = () => { try { return localStorage.getItem('cc_quality_locked'); } catch (e) { return 1; } };
 const status = t => { const p = document.querySelector('#loading p'); if (p) p.textContent = t; };

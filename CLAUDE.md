@@ -45,6 +45,9 @@ Estas regras valem para toda tarefa neste repositório.
 - **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
 - **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);
   chance de 3% a 9% por cliente a partir do nível 3. Vendedor da feira fica na frente da barraca.
+- **Ciclo do jogo blindado** (`main.js`): o próximo quadro é agendado antes e cada quadro roda em try/catch;
+  um erro não congela mais o jogo (`window.__lastLoopError`). Perda do contexto WebGL (iPhone sem memória)
+  salva e recarrega sozinho (`engine.js`).
 - **Chef nunca deixa prato queimar por falta de caminho**: sem rota até o balcão ou até o fogão (2 s), o prato
   vai direto ao balcão com ✨ (`magicPlate`), como o `magicServe` do garçom.
 - **Compra pela loja volta ao jogo sozinha**: `beginPlace` guarda `G.placeFrom`; ao colocar/cancelar, se veio

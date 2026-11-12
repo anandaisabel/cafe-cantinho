@@ -40,6 +40,13 @@ export function initEngine(canvas) {
   r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1.0;   // Neutral keeps hues saturated (ACES washed them out)
   r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
   E.renderer = r;
+  // iPhones drop the WebGL context under memory pressure: instead of a frozen canvas, save and reload
+  canvas.addEventListener('webglcontextlost', e => {
+    e.preventDefault();
+    const l = document.getElementById('loading'); if (l) { l.classList.remove('gone'); const p = l.querySelector('p'); if (p) p.textContent = 'Recarregando o café…'; }
+    window.dispatchEvent(new Event('pagehide'));                // flushes the save
+    setTimeout(() => location.reload(), 600);
+  }, false);
 
   const s = new THREE.Scene(); E.scene = s;
   s.background = bgTexture();
