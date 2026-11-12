@@ -203,6 +203,7 @@ export function buildOutside(st) {
   g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
   // static: matrices computed once
   g.updateMatrixWorld(true); g.traverse(o => { o.matrixAutoUpdate = false; });
+  if (vendor) vendor.root.traverse(o => { o.matrixAutoUpdate = true; });   // the vendor walks and animates: keep their matrices live
   built = g;
   return g;
 }
@@ -332,11 +333,23 @@ function buildMarket(g, n, sz) {
   return { x, z, hit };
 }
 let vendor = null;
+// The vendor strolls around the stall (stall-local coordinates, +z is the street side) and pauses
+// at each spot facing the street: tidying the crates, checking the side, stepping behind the counter.
+const VENDOR_SPOTS = [[1.3, .6], [.55, 1.25], [-.55, 1.25], [-1.35, .55], [-1.35, -.45], [0, -.85], [1.35, -.45]];
+const vw = { gx: 1.3, gy: .6, i: 0, wait: 2, moving: false };
 export function tickVendor(t, dt) {
   if (!vendor) return;
-  // a gentle idle so the stall feels staffed
-  animateChar(vendor, { gx: 1.3, gy: .6, sitting: false, moving: false, seed: 3, state: 'idle', alpha: 1, look: vendor.look, role: 'waiter' }, t, dt);
-  vendor.root.position.set(1.3, 0, .6); vendor.root.rotation.y = -.3;
+  if (dt > 0) {
+    if (vw.wait > 0) { vw.wait -= dt; vw.moving = false; }
+    else {
+      const [tx, tz] = VENDOR_SPOTS[(vw.i + 1) % VENDOR_SPOTS.length], dx = tx - vw.gx, dz = tz - vw.gy, d = Math.hypot(dx, dz), sp = .45 * dt;
+      vw.moving = true;
+      if (d <= sp) { vw.gx = tx; vw.gy = tz; vw.i = (vw.i + 1) % VENDOR_SPOTS.length; vw.wait = 2.5 + Math.random() * 4; }
+      else { vw.gx += dx / d * sp; vw.gy += dz / d * sp; }
+    }
+  }
+  animateChar(vendor, { gx: vw.gx, gy: vw.gy, sitting: false, moving: vw.moving, sp: .6, seed: 3, state: vw.moving ? 'walk' : 'idle', alpha: 1, look: vendor.look, role: 'cust',
+    faceTo: vw.moving ? null : [vw.gx, vw.gy + 1] }, t, dt);
 }
 // ---------- pedestrians (decorative, no interaction) ----------
 const walkers = [];

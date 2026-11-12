@@ -260,6 +260,8 @@ export function beginPlace(type, source, cost = 0, gems = 0) {
   }
   const c = S.size / 2; free.sort((a, b) => Math.hypot(a[0] - c, a[1] - c) - Math.hypot(b[0] - c, b[1] - c));
   const [x, y] = free[0];
+  // placing from the shop or inventory borrows build mode; remember to hand the café back afterwards
+  G.placeFrom = G.pending ? G.placeFrom : G.mode;
   G.mode = 'edit'; G.sel = null;
   G.pending = { item: { id: uid(), type, x, y, rot: d.kind === 'chair' ? 1 : 0 }, source, cost, gems, valid: true };
   refreshHUD(); updateToolbar();
@@ -276,8 +278,15 @@ export function confirmPlace() {
   S.items.push(p.item); G.pending = null; save(); sfx(p.source === 'shop' ? 'coin' : 'pop'); layoutChanged(G.world);
   setTimeout(() => { burst(p.item.x + .5, p.item.y + .5); bounce(p.item.id); }, 30);
   refreshHUD(); updateToolbar(); $('editHint').textContent = 'Arraste os móveis para reorganizar';
+  backToPlay();
 }
-export function cancelPlace() { G.pending = null; updateToolbar(); $('editHint').textContent = 'Arraste os móveis para reorganizar'; }
+export function cancelPlace() { G.pending = null; updateToolbar(); $('editHint').textContent = 'Arraste os móveis para reorganizar'; backToPlay(); }
+// a purchase started while playing returns straight to play once the item is placed (or cancelled):
+// otherwise the café stayed paused in build mode and looked frozen
+function backToPlay() {
+  if (G.placeFrom !== 'play') return;
+  G.placeFrom = null; G.mode = 'play'; G.sel = null; G.drag = null; layoutChanged(G.world); refreshHUD(); updateToolbar();
+}
 
 export function itemBusy(it) {
   const w = G.world;
@@ -363,7 +372,7 @@ export function openEquip(it) {
       const acts = h('div', 'acts');
       const b = h('button', 'btn ghost', 'Descartar'); b.onclick = () => { it.cook = null; it.last = null; save(); closePanel(); };
       // spend energy to finish now (1 per minute left)
-      const cost = speedUpCost(left), fast = h('button', 'btn rose', `Acelerar · ${cost} de energia`);
+      const cost = speedUpCost(left), fast = h('button', 'btn rose', `Acelerar ⚡${cost}`);
       fast.onclick = () => {
         const l2 = R.t - (now() - it.cook.s) / 1000, c2 = speedUpCost(l2);
         if (!spendEnergy(c2)) { const e = energy(); toast(`Falta energia (${e.v}/${e.max}). Volta 1 a cada 90 s`); bumpEnergy(); return; }

@@ -45,6 +45,12 @@ Estas regras valem para toda tarefa neste repositório.
 - **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
 - **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);
   chance de 3% a 9% por cliente a partir do nível 3. Vendedor da feira fica na frente da barraca.
+- **Chef nunca deixa prato queimar por falta de caminho**: sem rota até o balcão ou até o fogão (2 s), o prato
+  vai direto ao balcão com ✨ (`magicPlate`), como o `magicServe` do garçom.
+- **Compra pela loja volta ao jogo sozinha**: `beginPlace` guarda `G.placeFrom`; ao colocar/cancelar, se veio
+  de 'play', sai do modo construção (antes ficava pausado e parecia travado).
+- **Vendedor da feira passeia** em volta da barraca (`VENDOR_SPOTS`); a área de fora é estática
+  (`matrixAutoUpdate = false`), então o vendedor é reativado depois, senão nunca se move.
 - **Um cliente por cadeira** (`freeSeats`): mesas recebem vários clientes; mesa suja não recebe novos até ser limpa.
 - **Modo decoração = modo construção** (estilo The Sims): simulação, bonecos, pedestres, vendedor e vento congelam,
   a cena fica azulada (`setBuildMode`, uniform `build` do passe VIBRANT) e a faixa `.buildbanner` avisa a pausa.

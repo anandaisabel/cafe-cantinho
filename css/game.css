@@ -482,3 +482,6 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .c-energy.bump{animation:bump .4s ease 2}
 .ov.drinkb .dcost{position:absolute;right:-10px;top:-6px;background:#fff3c4;border:2px solid var(--k-butter2);border-radius:999px;font:800 11px/15px 'Baloo 2',Fredoka;color:var(--k-text);padding:0 5px}
 @media (max-width:480px){ .hud{gap:9px} .hchip{width:66px} }
+
+/* panel action buttons: wrap a long label instead of spilling outside the button */
+.acts .btn{white-space:normal;text-align:center;line-height:1.15;min-height:44px}

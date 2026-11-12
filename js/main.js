@@ -33,7 +33,7 @@ function wire() {
   bind('bOpen', UI.toggleOpen);
   bind('bShop', () => UI.openShop());
   bind('popChip', () => UI.toast(`Popularidade ${(G.S.pop || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })} de 105 · +0,1 por cliente satisfeito, −0,3 por cliente que vai embora bravo. Quanto maior, mais clientes chegam.`));
-  bind('bEdit', () => { G.mode = 'edit'; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; });
+  bind('bEdit', () => { G.mode = 'edit'; G.placeFrom = null; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; });
   bind('bDone', () => { if (G.pending) UI.cancelPlace(); G.mode = 'play'; G.sel = null; G.drag = null; layoutChanged(G.world); UI.refreshHUD(); UI.updateToolbar(); });
   bind('bEditShop', () => UI.openShop());
   bind('bMenu', UI.openRecipes);

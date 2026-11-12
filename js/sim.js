@@ -535,9 +535,14 @@ function ownerAI(w, s) {
   const ready = st.items
     .filter(i => ITEMS[i.type].kind === 'equip' && !taken.has(i.id) && cookState(i) === 'ready')
     .sort((a, b) => burnLeft(a) - burnLeft(b));
+  w.plateT = w.plateT || {};
   for (const it of ready) {
-    if (!targetCounter(st, it.cook.r)) continue;             // no counter free for this dish yet
-    if (route(w, s, { kind: 'item', id: it.id })) { s.job = { kind: 'plate', eq: it.id, phase: 'toEq' }; return; }
+    const cnt = targetCounter(st, it.cook.r);
+    if (!cnt) continue;                                      // no counter free for this dish yet
+    if (route(w, s, { kind: 'item', id: it.id })) { delete w.plateT[it.id]; s.job = { kind: 'plate', eq: it.id, phase: 'toEq' }; return; }
+    // the chef cannot even reach this stove: after a moment the dish goes to the counter by itself
+    if (!w.plateT[it.id]) w.plateT[it.id] = now();
+    else if (now() - w.plateT[it.id] > 2000) { delete w.plateT[it.id]; magicPlate(w, it, cnt); return; }
   }
   // Nowhere to put a dish that is about to burn: clear a counter whose food has already spoiled.
   if (ready.length) {
@@ -573,6 +578,12 @@ function ownerAI(w, s) {
       return;
     }
   }
+}
+// A ready dish moved straight from its equipment to a counter (with a sparkle), when no path exists.
+function magicPlate(w, it, cnt) {
+  const R = recipe(it.cook.r);
+  putOnCounter(cnt, R.id, R.por); it.cook = null;
+  if (w.own) { addXP(R.xp); G.S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + R.xp, 'xp'); addFloat(w, cnt.x + .5, cnt.y + .5, 60, '✨', 'xp'); save(); emit('sound', 'ding'); }
 }
 function magicServe(w, s, c, picked) {
   s.wp = []; s.target = null; c.waiter = s.id;
@@ -651,7 +662,9 @@ function jobArrive(w, s) {
     if (j.phase === 'toEq') {
       if (!it || cookState(it) !== 'ready') { s.job = null; return; }
       const R = recipe(it.cook.r), cnt = targetCounter(st, R.id);
-      if (!cnt || !route(w, s, { kind: 'item', id: cnt.id })) { s.job = null; return; }
+      if (!cnt) { s.job = null; return; }
+      // walled in with the stoves and no way to a counter: the dish reaches it anyway, never left to burn
+      if (!route(w, s, { kind: 'item', id: cnt.id })) { magicPlate(w, it, cnt); s.job = null; s.idleT = 1; return; }
       s.carry = R.id; s.carryN = R.por; it.cook = null; j.phase = 'toCounter'; j.counter = cnt.id;
       if (w.own) { addXP(R.xp); G.S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + R.xp, 'xp'); save(); }
     } else {
