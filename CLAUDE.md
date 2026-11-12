@@ -46,9 +46,15 @@ Estas regras valem para toda tarefa neste repositório.
 - **VIP sentado**: o clipe de sentar do KayKit põe o quadril .21 atrás da raiz, então o VIP é puxado mais .17 para a mesa
   (`HERO_SIT_FWD` em view.js); sem isso o quadril ficava dentro do encosto.
 - **O jogador não recolhe prato à mão.** O chef retira sozinho quando há balcão livre.
-- **Bebidas não vão para o balcão.** O jogador serve tocando no balão de copo sobre o cliente (`serveDrink`),
-  pagando só o custo em moedas. Cada bebida tem um bônus (`DRINK_BONUS`: moedas, XP ou satisfação).
-  O garçom não busca mais bebidas. **Energia de volta** (pedido): bebida custa 1–3 (`drinkEnergy`), "Acelerar"
+- **Bebidas não vão para o balcão.** O jogador serve tocando no balão de copo sobre o cliente (`serveDrink`).
+  **Fase 5**: a máquina prepara um sabor por vez num estoque próprio (`startBrew`, `it.brew`, `it.dstock`, até
+  `DRINK_CAP` 30 copos; `brewTime` = 4× t, mín. 1 min; `brewYield` = 2× porções; `brewCost` = 2× custo). Bebida não
+  queima e o preparo corre com o jogo fechado. Cada copo gasta 1 de energia e 1 de desgaste (`it.wear`): fumaça cinza em
+  `WEAR_WARN` 20, quebra em `WEAR_MAX` 25; conserto custa `REPAIR_ENERGY` 3 e mantém o estoque. Cliente só pede bebida
+  em estoque numa máquina inteira. Saves antigos: 1 lote da primeira bebida (`brewMig`), `it.off` removido.
+  Painel de energia (toque no raio): próximo ponto, usos e "Encher agora" por `REFILL_GEMS` 4 diamantes.
+  (Antes: pagava só o custo em moedas.) Cada bebida tem um bônus (`DRINK_BONUS`: moedas, XP ou satisfação).
+  O garçom não busca mais bebidas. **Energia de volta** (pedido): bebida custa 1 (`drinkEnergy`), "Acelerar"
   no painel do fogão termina o prato por 1 de energia por minuto restante (`speedUpCost`); recarga 1 por minuto,
   máximo 20 + 2/nível até 50. O balão de bebida não balança.
 - **Sem carinha fixa sobre o cliente.** A expressão aparece só em momentos marcantes.
@@ -113,7 +119,7 @@ Estas regras valem para toda tarefa neste repositório.
 - **Cafeteira industrial** (pedido explícito; a versão fofinha pequena foi rejeitada): balcão de inox e máquina comercial
   com 3 grupos, manômetros, vaporizadores e xícaras em cima, laterais menta (`coffeeMachine`). Suqueira em inox, 1,12×.
 - **Feira sem placa**, de frente para a câmera, toldo rosa, balcão cheio de frutas e caixotes na frente.
-- **Máquinas de bebida têm cardápio próprio**: `it.off` lista as bebidas pausadas; `serves()` em `sim.js`.
+- **Máquinas de bebida**: `serves(it, rid)` = tem esse sabor em estoque (o antigo `it.off` não existe mais).
 
 ---
 
@@ -227,7 +233,7 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 ## Referência de design
 
 `docs/documento-mestre.md`: especificação completa do jogo (recebida em 2026-11-12). `docs/plano-documento-mestre.md`:
-o que já existe, conflitos e fases (fases 1 a 4 feitas).
+o que já existe, conflitos e fases (fases 1 a 5 feitas).
 
 `docs/referencia-cafe-mania.md`: como o Café Mania funcionava (pesquisa em blogs de fãs) e o que
 ainda falta trazer. Inspiração de mecânica apenas: nunca nome, arte ou textos.

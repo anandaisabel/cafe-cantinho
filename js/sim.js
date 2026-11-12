@@ -1,5 +1,5 @@
 // Café simulation: customers, waiters, chefs, cooking and economy
-import { ITEMS, RECIPES, recipe, burnAfter, keepFor, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
+import { ITEMS, RECIPES, recipe, burnAfter, keepFor, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, DRINK_CAP, brewTime, brewYield, brewCost, WEAR_WARN, WEAR_MAX, REPAIR_ENERGY, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
 import { G, level, charm, seats, seatInfo, itemAt, rep, save, addXP, addCoins, addGems, hasIngredients, addSpice, energy, spendEnergy, addPop, stars, masteryBonus, addBoost, boostCount } from './state.js';
 import { findPath, standTiles, nearTiles, doorY, DIRS } from './path.js';
 import { cafeQuality } from './events.js';
@@ -325,14 +325,50 @@ function chooseOrder(w) {
 function chooseDrink(w) {
   if (Math.random() > .45) return null;
   const st = w.st, lv = w.own ? level() : 99;
-  const can = DRINKS().filter(R => R.lv <= lv && hasIngredients(R, st) && st.items.some(i => ITEMS[i.type].kind === 'equip' && ITEMS[i.type].eq === R.eq && serves(i, R.id)));
+  const can = DRINKS().filter(R => R.lv <= lv && drinkMachine(st, R.id));   // only what a working machine has in stock
   return can.length ? pick(can).id : null;
 }
 // The machine for a drink order, if the café has one.
 // Each drink machine keeps the drinks the player paused (`it.off`); anything else it serves,
 // so a drink unlocked later starts on the menu.
-export const serves = (it, rid) => !(Array.isArray(it.off) && it.off.includes(rid));
-export const drinkMachine = (st, rid) => { const R = recipe(rid); if (!R) return null; const ms = st.items.filter(i => ITEMS[i.type].kind === 'equip' && ITEMS[i.type].eq === R.eq); return ms.find(i => serves(i, rid)) || ms[0]; };
+export const serves = (it, rid) => !!(it.dstock && it.dstock.r === rid && it.dstock.left > 0);
+export const isBroken = it => (it.wear || 0) >= WEAR_MAX;
+export const isWorn = it => (it.wear || 0) >= WEAR_WARN;
+// a working machine with this drink in stock
+export const drinkMachine = (st, rid) => st.items.find(i => ITEMS[i.type].kind === 'equip' && serves(i, rid) && !isBroken(i)) || null;
+// brewing: one flavour at a time; a batch adds to the same flavour's stock, up to DRINK_CAP
+export function startBrew(w, it, rid) {
+  const R = recipe(rid); if (!R || !R.drink || !w.own) return 'no';
+  if (isBroken(it)) return 'broken';
+  if (it.brew) return 'busy';
+  if (it.dstock && it.dstock.left > 0 && it.dstock.r !== rid) return 'other';
+  if ((it.dstock && it.dstock.left || 0) + brewYield(R) > DRINK_CAP) return 'full';
+  if (G.S.coins < brewCost(R)) return 'coins';
+  if (!hasIngredients(R)) return 'ingredient';
+  addCoins(-brewCost(R)); if (R.need) addSpice(R.need.id, -(R.need.n || 1));
+  it.brew = { r: rid, s: now() };
+  addFloat(w, it.x + .5, it.y + .5, 60, '-' + brewCost(R), 'coin');
+  emit('sound', R.eq === 'coffee' ? 'grind' : 'pourliq'); save();
+  return 'ok';
+}
+export const brewLeft = it => it.brew ? brewTime(recipe(it.brew.r)) - (now() - it.brew.s) / 1000 : 0;
+// throw away what is left in the machine, to switch flavour
+export function emptyMachine(w, it) { it.dstock = null; if (w.own) save(); }
+export function repairMachine(w, it) {
+  if (!isWorn(it) || !w.own) return 'no';
+  if (!spendEnergy(REPAIR_ENERGY)) return 'energy';
+  it.wear = 0; addFloat(w, it.x + .5, it.y + .5, 70, '✨ consertada', 'xp'); emit('sound', 'ding'); save();   // stock kept
+  return 'ok';
+}
+function tickBrews(w) {
+  for (const it of w.st.items) {
+    if (!it.brew || brewLeft(it) > 0) continue;
+    const R = recipe(it.brew.r);
+    if (!it.dstock || it.dstock.r !== R.id || it.dstock.left <= 0) it.dstock = { r: R.id, left: 0 };
+    it.dstock.left = Math.min(DRINK_CAP, it.dstock.left + brewYield(R)); it.brew = null;
+    if (w.own) { addFloat(w, it.x + .5, it.y + .5, 70, '+' + brewYield(R) + ' copos', 'xp'); emit('sound1', 'ding'); save(); }
+  }
+}
 // A waiter has reached the machine: it pours, and the glass goes straight onto the tray.
 function pourDrink(w, mach, c) {
   const R = recipe(c.drink);
@@ -365,18 +401,19 @@ function giveDrink(w, c) {
   if (w.own) emit('sound1', 'clink');
 }
 // The player taps a guest's drink bubble: the machine pours and the glass lands at once.
+// why a drink can't be poured: a machine has it but is broken, or nothing has it in stock
+const st0 = (st, rid) => st.items.some(i => serves(i, rid)) ? 'broken' : 'nostock';
 export function serveDrink(w, c) {
   if (!c || !c.drink || c.drinkDone || (c.state !== 'wait' && c.state !== 'eat')) return 'no';
   const R = recipe(c.drink), mach = drinkMachine(w.st, c.drink);
-  if (!mach) return 'nomachine';
+  if (!mach) return st0(w.st, c.drink);
   if (w.own) {
     const need = drinkEnergy(R);
     if (energy().v < need) return 'energy';
-    if (G.S.coins < R.cost) return 'coins';
-    if (!hasIngredients(R)) return 'ingredient';
-    spendEnergy(need); addCoins(-R.cost);
-    if (R.need) addSpice(R.need.id, -(R.need.n || 1));
+    spendEnergy(need);                     // the drink itself was paid for when the batch was brewed
   }
+  mach.dstock.left--; mach.wear = (mach.wear || 0) + 1;
+  if (w.own && isBroken(mach)) emit('broke', mach.type);
   mach.pour = now(); mach.drinkR = c.drink;
   emit('sound1', R.eq === 'coffee' ? 'grind' : 'pourliq');
   giveDrink(w, c);
@@ -785,6 +822,7 @@ export function tick(w, dt, paused) {
   for (const p of w.pops) p.age += dt;
   w.pops = w.pops.filter(p => p.age < (p.face ? 1.8 : 1.2));
   if (paused) return;
+  tickBrews(w);
   updateCustomers(w, dt);
   updateStaff(w, dt);
 }

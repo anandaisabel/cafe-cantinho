@@ -1,5 +1,5 @@
 // Game state, derived values and persistence (device + account)
-import { START_SIZE, START_COINS, ITEMS, xpForLevel, GOALS, gemsForLevel, isWallItem, canHoldWall, energyMax, ENERGY_REGEN_S, MASTERY_AT, MASTERY_BONUS } from './config.js';
+import { RECIPES, brewYield, START_SIZE, START_COINS, ITEMS, xpForLevel, GOALS, gemsForLevel, isWallItem, canHoldWall, energyMax, ENERGY_REGEN_S, MASTERY_AT, MASTERY_BONUS } from './config.js';
 import { now, wall, setClock, uid, emit } from './util.js';
 import { DIRS, doorY } from './path.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
@@ -32,7 +32,7 @@ export function freshState() {
     ],
     inv: {},
     market: { at: -1e9, seed: 1, items: [] },
-    sconceMig: 1, sinkMig: 1,
+    sconceMig: 1, sinkMig: 1, brewMig: 1,
     energy: { v: 30, t: 0 },
     mastery: {}, boost: { sal: 2, tomilho: 1 },
     pop: 10,
@@ -82,6 +82,17 @@ export function migrate(st) {
       for (let y = 1; y < n && !spot; y++) for (let x = 1; x < n && !spot; x++) if (ok(x, y)) spot = [x, y];
       if (spot) st.items.push({ id: uid(), type: 'sink', x: spot[0], y: spot[1], rot: 0 });
       else { st.inv = st.inv || {}; st.inv.sink = (st.inv.sink || 0) + 1; }
+    }
+  }
+  // drink machines now brew a stock (§16): machines in older cafés start with one batch of their first drink
+  if (!st.brewMig) {
+    st.brewMig = 1;
+    const lv = level(st);
+    for (const i of st.items) {
+      const d = ITEMS[i.type]; if (!d || d.kind !== 'equip') continue;
+      delete i.off;
+      const R = RECIPES.find(r => r.drink && r.eq === d.eq && r.lv <= lv && !r.need);
+      if (R && !i.dstock) i.dstock = { r: R.id, left: brewYield(R) };
     }
   }
   if (!st.mastery || typeof st.mastery !== 'object') st.mastery = {};   // times each dish came off the stove
@@ -259,7 +270,7 @@ export function addBoost(id, n, st = G.S) { st.boost = st.boost || {}; st.boost[
 // counters stay frozen. A dish left too long burns (burnAfter), like it would with the game open.
 export function catchUp(st, ms) {
   if (!st || !(ms > 1000)) return 0;
-  for (const i of st.items || []) if (i.cook && Number.isFinite(i.cook.s)) i.cook.s -= ms;
+  for (const i of st.items || []) { if (i.cook && Number.isFinite(i.cook.s)) i.cook.s -= ms; if (i.brew && Number.isFinite(i.brew.s)) i.brew.s -= ms; }
   const e = st.energy;
   if (e && Number.isFinite(e.t) && e.v < energyMax(level(st))) e.t -= ms;
   save();

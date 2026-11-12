@@ -530,3 +530,11 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .card .bacts .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:3px}
 .card .bacts .cbtn .mi{flex:none;width:16px;height:16px;display:inline-block}
 .card .bacts .cbtn .mi svg{width:16px;height:16px;display:block}
+/* drink machines: stock / wear box; energy panel */
+.mstate{background:var(--k-paper2);border:2px solid var(--k-line);border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.4;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.mstate.warn{background:#fff3d6;border-color:var(--k-butter2)}
+.mstate.bad{background:#fde3e5;border-color:var(--k-pink2)}
+.mstate .btn{align-self:stretch}
+.mstate .ebig{font-size:24px;display:inline-flex;align-items:center;gap:6px}
+.mstate .ebig .mi svg{width:26px;height:26px}
+.btn .bi{display:inline-flex}

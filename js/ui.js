@@ -1,8 +1,8 @@
 // HUD, menus and panels
-import { COUNTER_CAP, MASTERY_AT, BOOSTS, boost, RECIPE_CATS, recipeCat, speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
+import { DRINK_CAP, brewTime, brewYield, brewCost, REPAIR_ENERGY, REFILL_GEMS, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, RECIPE_CATS, recipeCat, speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
 import { cafeQuality, qualityLabel } from './events.js';
 import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, spendEnergy, POP_MAX, stars, masteryCount, boostCount, addBoost } from './state.js';
-import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink, useBoost, dishLeft, portionsOf } from './sim.js';
+import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink, startBrew, brewLeft, emptyMachine, repairMachine, isBroken, isWorn, useBoost, dishLeft, portionsOf } from './sim.js';
 import { esc, fmtTime, pick, uid, today, on, now } from './util.js';
 import { thumbItem, thumbFood, thumbChar } from './three/thumbs.js';
 import { swatch } from './three/textures.js';
@@ -88,8 +88,8 @@ on('servedrink', id => {
   const r = serveDrink(G.world, c);
   if (r === 'ok') { const R = recipe(c.drink), b = DRINK_BONUS[R.id] || 'coins'; toast(`${R.n} servido · ${BONUS_TXT[b]}`); refreshHUD(); return; }
   sfx('bad');
-  if (r === 'energy') { toast(`⚡ Sem energia · volta em ${energy().next}s`); bumpEnergy(); return; }
-  toast(r === 'nomachine' ? 'Compre a máquina dessa bebida na loja' : r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não dá para servir agora');
+  if (r === 'energy') { toast(`⚡ Sem energia · volta em ${fmtTime(energy().next)}. Toque no raio para encher.`); bumpEnergy(); return; }
+  toast(r === 'broken' ? 'A máquina dessa bebida quebrou: toque nela para consertar' : r === 'nostock' ? 'Acabou essa bebida: toque na máquina e prepare mais' : 'Não dá para servir agora');
 });
 // popularity meter: a face that cheers up as the café gets famous, plus the number (0–105)
 const POP_FACES = {
@@ -117,6 +117,27 @@ export function refreshEnergy() {
   $('energyChip').title = 'Energia: serve cafés e sucos e acelera pratos no fogo';
   // a small countdown under the chip while it refills
   const sub = $('energySub'); if (sub) { const t = e.next ? `+1 em ${Math.floor(e.next / 60)}:${String(e.next % 60).padStart(2, '0')}` : ''; if (sub.textContent !== t) { sub.textContent = t; sub.style.display = t ? '' : 'none'; } }
+}
+// Energy panel (§17): what it is for, when the next point comes, and the instant refill with its price shown up front
+export function openEnergy() {
+  const S = G.S;
+  openPanel('Energia', 'bolt', body => {
+    const e = energy();
+    const top = h('div', 'mstate', `<b class="ebig">${ic('bolt', 'mi')} ${e.v} / ${e.max}</b><span id="eNext">${e.v >= e.max ? 'Energia cheia' : '+1 em ' + fmtTime(e.next)}</span>`);
+    body.appendChild(top);
+    const tick = () => { const el = document.getElementById('eNext'); if (!el) return; const x = energy(); el.textContent = x.v >= x.max ? 'Energia cheia' : '+1 em ' + fmtTime(x.next); setTimeout(tick, 1000); }; tick();
+    body.appendChild(h('p', 'sub', `A energia recarrega 1 por minuto, também com o jogo fechado. Ela serve para:<br>• servir bebidas (1 por copo)<br>• consertar máquinas de bebida (${REPAIR_ENERGY})<br>• acelerar pratos no fogo (1 por minuto que falta)<br>Cozinhar e recolher pratos nunca gasta energia.`));
+    const full = e.v >= e.max, can = (S.gems || 0) >= REFILL_GEMS;
+    const b = h('button', 'btn big', `Encher agora · ${ic('gem', 'bi')} ${REFILL_GEMS}`);
+    b.disabled = full || !can;
+    b.onclick = () => {
+      const x = energy(); if (x.v >= x.max || (S.gems || 0) < REFILL_GEMS) return;
+      addGems(-REFILL_GEMS); S.energy.v = x.max; S.energy.t = now(); save(); sfx('level'); refreshHUD();
+      toast(`Energia cheia! −${REFILL_GEMS} diamantes`); closePanel();
+    };
+    const acts = h('div', 'acts'); acts.appendChild(b); body.appendChild(acts);
+    body.appendChild(h('p', 'sub', full ? 'Sua energia já está cheia.' : can ? `Você tem ${S.gems || 0} diamantes. O preço é cobrado só quando você tocar no botão.` : `Faltam diamantes: você tem ${S.gems || 0} e precisa de ${REFILL_GEMS}.`));
+  }, { small: true });
 }
 function bumpEnergy() { const el = $('energyChip'); if (!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 on('drinkfail', r => toast(r === 'nomachine' ? 'Compre a máquina dessa bebida na loja' : r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não dá para servir agora'));
@@ -400,25 +421,37 @@ export function openEquip(it) {
   // a station can cook dishes, serve drinks, or both (gelato: gelato + affogato; chocolate fountain: fondue + hot chocolate)
   const foods = RECIPES.filter(r => r.eq === d.eq && !r.drink), drinks = RECIPES.filter(r => r.eq === d.eq && r.drink);
   const reopen = () => openEquip(it);
+  // drinks: the machine's stock and wear, then one card per flavour to brew a batch
   const drinkCards = (body) => {
+    const worn = isWorn(it), broken = isBroken(it);
+    if (worn) {
+      const box = h('div', 'mstate ' + (broken ? 'bad' : 'warn'), broken ? '<span><b>A máquina quebrou de tanto uso.</b> O estoque continua guardado.</span>' : '<span><b>Soltando fumaça!</b> Conserte antes que quebre.</span>');
+      const fix = h('button', 'btn rose', `Consertar ${ic('bolt', 'bi')}${REPAIR_ENERGY}`);
+      fix.onclick = () => { const r = repairMachine(G.world, it); if (r === 'ok') { toast('Máquina consertada!'); refreshHUD(); reopen(); } else if (r === 'energy') { toast(`⚡ Falta energia para o conserto (precisa de ${REPAIR_ENERGY})`); bumpEnergy(); } };
+      box.appendChild(fix); body.appendChild(box);
+    }
+    const st = it.dstock && it.dstock.left > 0 ? it.dstock : null;
+    const line = it.brew ? `Preparando <b>${recipe(it.brew.r).n}</b> · fica pronto em <b id="brewLeft">${fmtTime(brewLeft(it))}</b>`
+      : st ? `No estoque: <b>${st.left} copos de ${recipe(st.r).n}</b> (cabem ${DRINK_CAP})` : 'Máquina vazia: escolha um sabor para preparar.';
+    const info = h('div', 'mstate', `<span>${line}</span>`); body.appendChild(info);
+    if (it.brew) { const tick = () => { const e = document.getElementById('brewLeft'); if (!e || !it.brew) return; e.textContent = fmtTime(brewLeft(it)); setTimeout(tick, 500); }; tick(); }
+    if (st && !it.brew) { const em = h('button', 'btn ghost small', 'Esvaziar para trocar de sabor'); em.onclick = () => { emptyMachine(G.world, it); sfx('click'); reopen(); }; info.appendChild(em); }
+    body.appendChild(h('p', 'sub', `Cada copo servido gasta ${ic('bolt', 'mi')}1. Toque no balão com copo sobre o cliente para servir.`));
     const grid = h('div', 'grid'); body.appendChild(grid);
     for (const R of drinks) {
-      const locked = R.lv > l, need = R.need && spice(R.need.id), ok = hasIngredients(R, S), on = !locked && serves(it, R.id);
+      const locked = R.lv > l, need = R.need && spice(R.need.id), ok = hasIngredients(R, S);
+      const other = st && st.r !== R.id, full = (st && st.r === R.id ? st.left : 0) + brewYield(R) > DRINK_CAP;
+      const why = locked ? 'Bloqueado' : broken ? 'Conserte antes' : it.brew ? 'Preparando outra' : other ? 'Esvazie antes' : full ? 'Estoque cheio' : !ok ? 'Falta ingrediente' : `Preparar ${price(brewCost(R))}`;
       grid.appendChild(card(thumbFood(R.id, 60), R.n,
-        locked ? `${ic('lock', 'mi')} Nível ${R.lv}` : `${BONUS_TXT[DRINK_BONUS[R.id] || 'coins']}<br>${ic('coin', 'mi')}${R.price} por copo · +${R.xp} xp` + (need ? `<br><span class="${ok ? 'okneed' : 'noneed'}">Precisa de ${R.need.n || 1}× ${need.n} · tem ${spiceCount(R.need.id, S)}</span>` : ''),
-        locked ? 'Bloqueado' : on ? (ok ? 'Servindo ✓' : 'Servindo · falta ingrediente') : 'Pausada · tocar para servir', {
-          locked, active: on, disabled: locked, btnCls: on ? '' : 'ghost',
-          onClick: () => {
-            const off = Array.isArray(it.off) ? it.off : [];
-            it.off = on ? [...off, R.id] : off.filter(id => id !== R.id);
-            save(); sfx('click'); toast(on ? `${R.n} saiu do cardápio desta máquina` : `${R.n} está sendo servido`); reopen();
-          },
+        locked ? `${ic('lock', 'mi')} Nível ${R.lv}` : `${BONUS_TXT[DRINK_BONUS[R.id] || 'coins']}<br>${ic('clock', 'mi')}${fmtTime(brewTime(R))} · rende ${brewYield(R)} copos<br>${ic('coin', 'mi')}${R.price} por copo · +${R.xp} xp` + (need ? `<br><span class="${ok ? 'okneed' : 'noneed'}">Precisa de ${R.need.n || 1}× ${need.n} · tem ${spiceCount(R.need.id, S)}</span>` : ''),
+        why, {
+          locked, active: st && st.r === R.id, disabled: locked || !!it.brew || other || full || !ok || S.coins < brewCost(R) || broken,
+          onClick: () => { const r = startBrew(G.world, it, R.id); if (r === 'ok') { toast(`Preparando ${R.n.toLowerCase()}…`); refreshHUD(); reopen(); } },
         }));
     }
   };
   if (!foods.length) {        // pure drink machine: served from directly, nothing to queue
-    openPanel(`${d.n} · o que servir?`, 'book', body => {
-      body.appendChild(h('p', 'sub', 'Escolha as bebidas desta máquina. Os clientes só pedem o que estiver <b>servindo</b>. Quando aparecer o balão com um copo sobre o cliente, <b>toque nele</b> para servir na hora.'));
+    openPanel(d.n, 'book', body => {
       drinkCards(body);
     });
     return;
@@ -438,7 +471,6 @@ export function openEquip(it) {
     }
     if (drinks.length) {
       body.appendChild(h('div', 'gtitle', 'Bebidas desta máquina'));
-      body.appendChild(h('p', 'sub', 'Servidas na hora: toque no balão com copo sobre o cliente.'));
       drinkCards(body);
     }
   });
@@ -505,6 +537,7 @@ export function openShelf(it = null, w = G.world) {
     }
   });
 }
+on('broke', () => { sfx('bad'); toast('Uma máquina de bebidas quebrou! Toque nela para consertar.'); });
 on('nosink', () => toast('Os garçons não têm onde lavar a louça: os lugares sujos ficam bloqueados. Compre uma pia na loja (Cozinha).'));
 on('mastery', m => { const R = recipe(m.rid); toast(`${'★'.repeat(m.stars)} ${R.n}: nova estrela! +${m.coins} moedas` + (m.gift ? ` e 1 ${boost(m.gift).n}` : '')); sfx('ding'); });
 

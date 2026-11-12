@@ -4,7 +4,7 @@ import { model } from './assets.js';
 import { mat, mesh, box, sphere, cyl, lathe, cachedGeo, torus, leafGeo, mergeParts, M4, rbox, shadowBlob, disposeTree, SHARED } from './kit.js';
 import { food3d, food3dWhole } from './food3d.js';
 import { radialTexture, skyTexture } from './textures.js';
-import { ITEMS, recipe, burnAfter } from '../config.js';
+import { ITEMS, recipe, burnAfter, WEAR_WARN, DRINK_CAP } from '../config.js';
 import { now } from '../util.js';
 import { registerNightGlow, registerPane } from './daynight.js';
 
@@ -502,14 +502,15 @@ export function updateItem(entry, it, t, o) {
   if (kind === 'equip') {
     const R = it.cook && recipe(it.cook.r), p = R ? Math.min(1, (now() - it.cook.s) / (R.t * 1000)) : 0;
     const over = R ? (now() - it.cook.s) / 1000 - R.t : 0, burnt = R && over > burnAfter(R);
-    const pouring = !!(it.pour && now() - it.pour < 1500);
+    const pouring = !!(it.pour && now() - it.pour < 1500) || !!it.brew;   // brewing a batch animates like pouring
+    const worn = (it.wear || 0) >= WEAR_WARN;
     const cooking = (R && p < 1) || pouring, ready = R && p >= 1 && !burnt;
     if (it.type === 'stove') { P.pot.visible = P.lid.visible = !!R; P.flame.visible = !!cooking; if (cooking) { P.lid.position.y = .9 + Math.abs(Math.sin(t / 140)) * .022; P.lid.rotation.z = Math.sin(t / 90) * .05; P.flame.material.emissiveIntensity = 2 + Math.sin(t / 60) * .5; } else P.lid.position.y = .9; }
     if (it.type === 'coffee') { P.cup.visible = !!R || pouring; P.stream.visible = !!cooking || pouring; P.coffee.position.y = .012 + p * .042; const blink = cooking ? (Math.floor(t / 400) % 2) : 0, sk = (cooking ? 'c' + blink : ready ? 'r' : 'i'); if (P.btnKey !== sk) { P.btnKey = sk; P.btns.forEach(b => { b.material = mat(cooking ? '#f7c948' : ready ? '#8fd18a' : '#cfe6cc', { emissive: cooking ? '#f7a531' : ready ? '#6fd36a' : '#9cc79a', ei: cooking ? (blink ? 1.4 : .3) : ready ? 1.5 : .3 }); }); } P.needle.rotation.z = cooking ? Math.sin(t / 300) * .6 : 0; }
     if (it.type === 'blender' && P.tanks) {
       // The tanks always hold juice: the level dips while a glass is poured and refills smoothly,
       // and the surface moves while the floor of the tank stays put.
-      const want = pouring ? .62 : 1;
+      const want = it.dstock && it.dstock.left > 0 ? .15 + .85 * Math.min(1, it.dstock.left / DRINK_CAP) : .12;   // tanks show the stock
       P.liqF = P.liqF === undefined ? want : P.liqF + (want - P.liqF) * .05;
       for (const tk of P.tanks) {
         tk.liquid.scale.y = P.liqF;
@@ -524,7 +525,8 @@ export function updateItem(entry, it, t, o) {
     // steam
     (P.puffs || []).forEach((sp, i) => {
       const k = ((t / 1300) + i / 3) % 1;
-      sp.visible = !!cooking; if (!cooking) return;
+      sp.visible = !!cooking || worn; if (!sp.visible) return;
+      if (worn) sp.material.color.setHex(0x8f8a86); else sp.material.color.setHex(0xffffff);   // grey smoke: the machine needs a repair
       const base = it.type === 'stove' ? [.02, 1.05, .03] : it.type === 'coffee' ? [0, 1.1, .33] : [0, .95, .22];
       sp.position.set(base[0] + Math.sin(t / 500 + i * 2) * .04, base[1] + k * .45, base[2]); sp.material.opacity = .55 * (1 - k) * Math.min(1, k * 4); sp.scale.setScalar(.12 + k * .22);
     });

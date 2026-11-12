@@ -7,8 +7,8 @@ import { applyDayNight, NIGHT, clearWorldRegistries } from './daynight.js';
 import { Clock } from '../world/clock.js';
 import { buildChar, animateChar } from './chars3d.js';
 import { mat, cachedGeo, disposeTree } from './kit.js';
-import { ITEMS, RECIPES, recipe, drinkEnergy } from '../config.js';
-import { burnLeft, spoiled, freshLeft, isDirty, doorInUse, waitBudget, serves } from '../sim.js';
+import { ITEMS, RECIPES, recipe, drinkEnergy, brewTime } from '../config.js';
+import { burnLeft, spoiled, freshLeft, isDirty, doorInUse, waitBudget, serves, isBroken, isWorn, brewLeft } from '../sim.js';
 import { G, seatInfo, level } from '../state.js';
 import { doorY } from '../path.js';
 import { thumbFood } from './thumbs.js';
@@ -190,14 +190,16 @@ function updateOverlays(w, t) {
         else { cls = 'st ready' + (bl < .45 ? ' warn' : ''); html = `<b>${bl < .45 ? 'Retire!' : 'Pronto!'}</b>`; }
       } else if (it.pending) { cls = 'st cook wait'; html = `<div class="ring" style="--p:0%">${img(it.pending.r)}</div><small>a caminho</small>`; }
       else if (!G.visiting) {
-        const eq = ITEMS[it.type].eq, cooks = RECIPES.some(r => r.eq === eq && !r.drink);
-        if (cooks) { cls = 'st idle'; html = '<i>Cozinhar</i>'; }
-        else {
-          // a drink machine is always ready: say so, and call out when a seated guest is waiting on it
-          const menu = RECIPES.filter(r => r.eq === eq && r.drink && r.lv <= level() && serves(it, r.id));
-          const asks = w.custs.filter(c => c.drink && !c.drinkDone && c.sitting && recipe(c.drink).eq === eq).length;
-          if (menu.length) { cls = 'st drinkready' + (asks ? ' ask' : ''); html = `<b>${img(asks ? w.custs.find(c => c.drink && !c.drinkDone && c.sitting && recipe(c.drink).eq === eq).drink : menu[0].id)}<span>${asks ? 'Pedido!' : 'Pronta'}</span></b>`; }
+        const eq = ITEMS[it.type].eq, cooks = RECIPES.some(r => r.eq === eq && !r.drink), hasDrinks = RECIPES.some(r => r.eq === eq && r.drink);
+        // drink machines: broken > brewing > stock (calling out a waiting guest) > empty
+        if (hasDrinks && isBroken(it)) { cls = 'st ready burnt'; html = '<b>Quebrou</b>'; }
+        else if (it.brew) { const R = recipe(it.brew.r), bt = brewTime(R), left = brewLeft(it); cls = 'st cook'; html = `<div class="ring" style="--p:${(Math.min(1, 1 - left / bt) * 100).toFixed(1)}%">${img(R.id)}</div><small>${fmtTime(left)}</small>`; }
+        else if (it.dstock && it.dstock.left > 0) {
+          const asks = w.custs.some(c => c.drink === it.dstock.r && !c.drinkDone && c.sitting);
+          cls = 'st drinkready' + (asks ? ' ask' : ''); html = `<b>${img(it.dstock.r)}<span>${asks ? 'Pedido!' : it.dstock.left + ' copos'}</span></b>`;
         }
+        else if (cooks) { cls = 'st idle'; html = '<i>Cozinhar</i>'; }
+        else if (hasDrinks) { cls = 'st idle'; html = '<i>Preparar</i>'; }
       }
     }
     if (kind === 'table' && w.noSink && !G.visiting && st.items.some(ch => ch.dirty && seatInfo(st, ch) === it)) { cls = 'st dirty'; html = `<b>Falta pia</b>`; }
@@ -241,7 +243,7 @@ function updateOverlays(w, t) {
     const want = c.drink && !c.drinkDone && (c.state === 'wait' || c.state === 'eat') && c.sitting && !G.visiting && G.mode !== 'edit';   // hidden while paused in decoration mode
     if (!want) { if (C.dom3) { C.dom3.remove(); C.dom3 = null; } continue; }
     if (!C.dom3) {
-      C.dom3 = el('ov drinkb', `<div class="dbub"><div class="dglass">${img(c.drink)}</div><b class="dcost">⚡${drinkEnergy(recipe(c.drink))}</b></div>`); fillSlots(C.dom3);
+      C.dom3 = el('ov drinkb', `<div class="dbub"><div class="dglass">${img(c.drink)}</div><b class="dcost">⚡${drinkEnergy()}</b></div>`); fillSlots(C.dom3);
       // serve on touch-down: a click needs press and release on the same spot, which a moving bubble can miss
       const id = c.id; C.dom3.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); emit('servedrink', id); });
     }

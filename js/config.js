@@ -131,7 +131,15 @@ export const DRINKS = () => RECIPES.filter(r => r.drink);
 //   coins: pays 60% more · xp: double XP · rep: the guest leaves happier (satisfaction and reputation)
 export const DRINK_BONUS = { espresso: 'coins', cappuccino: 'xp', chai: 'coins', suco: 'rep', vitamina: 'xp', moccaccino: 'xp', affogato: 'rep', chocquente: 'coins', matchalatte: 'rep' };
 export const BONUS_TXT = { coins: 'mais moedas', xp: 'XP em dobro', rep: 'cliente mais feliz' };
-export const drinkEnergy = R => R.lv >= 15 ? 3 : R.lv >= 6 ? 2 : 1;   // energy to serve a drink by tapping the guest
+export const drinkEnergy = () => 1;   // energy to serve one glass by tapping the guest (documento mestre §17)
+// Drink machines (§16): the player picks a flavour and the machine brews a batch into its own stock.
+// Drinks never burn. Each glass wears the machine: it smokes near the end and breaks; repairing costs energy.
+export const DRINK_CAP = 30;                                  // glasses one machine holds
+export const brewTime = R => Math.max(60, R.t * 4);           // seconds to brew a batch
+export const brewYield = R => R.por * 2;                      // glasses per batch
+export const brewCost = R => R.cost * 2;                      // coins per batch
+export const WEAR_WARN = 20, WEAR_MAX = 25, REPAIR_ENERGY = 3;
+export const REFILL_GEMS = 4;                                 // fill the energy bar right away
 export const ENERGY_REGEN_S = 60;                       // one point every minute of play
 export const energyMax = lv => Math.min(50, 20 + lv * 2);
 // speeding a dish up: one energy per minute it still had to cook (at least 1)
