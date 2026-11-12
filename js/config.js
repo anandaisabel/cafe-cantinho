@@ -94,11 +94,15 @@ const MARKET_QTY  = { comum: [2, 5], incomum: [1, 3], raro: [1, 2], exclusivo: [
 // price at the stall: a bit over shop price for convenience, and set by rarity for market-only goods
 const MARKET_MULT = { comum: 1.15, incomum: 1.2, raro: 1.25, exclusivo: 1.3 };
 export const inShop = sp => !sp.feira && (sp.price || sp.gprice);
-export function rollMarket(seed) {
+// the level an ingredient becomes useful: the first recipe that needs it (null = no recipe uses it)
+export const spiceLevel = id => { const lv = RECIPES.filter(r => r.need && r.need.id === id).map(r => r.lv); return lv.length ? Math.min(...lv) : null; };
+export function rollMarket(seed, lvl = 99) {
   let s = (seed | 0) || 1;
   const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const out = [];
   for (const sp of SPICES) {
+    const need = spiceLevel(sp.id);
+    if (need === null || need > lvl) { rnd(); continue; }     // only what the player's recipes can use, at their level
     if (rnd() > MARKET_ODDS[sp.r]) continue;
     const [a, b] = MARKET_QTY[sp.r], qty = a + Math.floor(rnd() * (b - a + 1));
     const m = MARKET_MULT[sp.r];
@@ -108,7 +112,7 @@ export function rollMarket(seed) {
     else e.gems = Math.max(1, RARITY[sp.r].o);        // market-only goods are priced by rarity
     out.push(e);
   }
-  if (!out.length) out.push({ id: 'canela', qty: 3, coins: 100 });
+  if (!out.length && lvl >= 4) out.push({ id: 'canela', qty: 3, coins: 100 });
   return out.slice(0, 8);
 }
 export const SPICE_CATS = { especiaria: 'Especiarias', extrato: 'Extratos e doces', ingrediente: 'Ingredientes finos' };
@@ -137,7 +141,7 @@ export const ITEMS = {
   chair_bistro:  { n: 'Cadeira bistrô', d: 'Cadeira estilo bistrô, colorida e moderna.',     cat: 'mobilia', kind: 'chair', price: 150, lv: 4, rot: true, frame: '#4b4b58', seat: '#7fae9a', charm: 1 },
   counter:       { n: 'Balcão', d: 'Recebe os pratos prontos. Os garçons buscam a comida aqui.',             cat: 'cozinha', kind: 'counter', price: 80,  lv: 1, rot: true },
   stove:         { n: 'Fogão', d: 'Prepara pães, bolos, tortas e pratos quentes.',              cat: 'cozinha', kind: 'equip', eq: 'stove',   price: 120, lv: 1, rot: true },
-  coffee:        { n: 'Máquina de café', d: 'Máquina de espresso para cafés e cappuccinos.',    cat: 'cozinha', kind: 'equip', eq: 'coffee',  price: 150, lv: 1, rot: true },
+  coffee:        { n: 'Máquina de café', d: 'Máquina de espresso para cafés e cappuccinos.',    cat: 'cozinha', kind: 'equip', eq: 'coffee',  price: 260, lv: 1, rot: true },
   blender:       { n: 'Liquidificador', d: 'Para sucos e vitaminas geladinhos.',     cat: 'cozinha', kind: 'equip', eq: 'blender', price: 200, lv: 3, rot: true },
   plant:         { n: 'Vaso de planta', d: 'Jiboia num vaso de cerâmica brilhante.',     cat: 'decor', kind: 'decor', price: 35,  lv: 1, charm: 1 },
   lamp:          { n: 'Luminária de chão', d: 'Luminária de chão com luz quentinha.',  cat: 'decor', kind: 'decor', price: 70,  lv: 1, charm: 1, light: true },

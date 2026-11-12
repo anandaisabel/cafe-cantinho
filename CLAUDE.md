@@ -41,6 +41,12 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
+- **Modo decoração = modo construção** (estilo The Sims): simulação, bonecos, pedestres, vendedor e vento congelam,
+  a cena fica azulada (`setBuildMode`, uniform `build` do passe VIBRANT) e a faixa `.buildbanner` avisa a pausa.
+- **Ingredientes por nível**: `spiceLevel(id)` = nível da primeira receita que usa; feira e loja só vendem a partir
+  dele. Ingredientes sem receita não são vendidos. **Café novo começa sem cafeteira** (custa 260 na loja).
+- **Etiquetas dos equipamentos**: fogão parado mostra "Cozinhar"; máquina de bebida mostra "Pronta" ou "Pedido!".
+- **`?offline`** no endereço ignora o Firebase: use para testar sem gravar cafés de teste no banco real.
 - **Sons gravados (CC0 Kenney Impact Sounds)** em `assets/sfx/*.wav` (mono 22 kHz, embutidos por `build.py` em
   `js/sfx-data.js`): sino da porta (2 toques, na entrada `bell` e na saída `bellOut`), prato, copo e talheres.
   Os sintetizados soavam artificiais. Mastigar ficou mudo. Conversão OGG→WAV foi feita no navegador (sem ffmpeg).

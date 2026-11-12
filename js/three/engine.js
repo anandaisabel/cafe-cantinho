@@ -89,10 +89,13 @@ export function applyQuality() {
 }
 // final grade: a little more saturation and contrast, for a toy-box, candy-coloured look
 const VIBRANT = {
-  uniforms: { tDiffuse: { value: null }, sat: { value: 1.12 }, con: { value: 1.03 } },
+  uniforms: { tDiffuse: { value: null }, sat: { value: 1.12 }, con: { value: 1.03 }, build: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: 'uniform sampler2D tDiffuse; uniform float sat, con; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float l = dot(c.rgb, vec3(.2126, .7152, .0722)); vec3 g = mix(vec3(l), c.rgb, sat); g = (g - .5) * con + .5; gl_FragColor = vec4(clamp(g, 0., 1.), c.a); }',
+  // build: 0..1, the cool "blueprint" wash of decoration mode (everything paused)
+  fragmentShader: 'uniform sampler2D tDiffuse; uniform float sat, con, build; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float l = dot(c.rgb, vec3(.2126, .7152, .0722)); vec3 g = mix(vec3(l), c.rgb, mix(sat, .45, build)); g = (g - .5) * con + .5; g = mix(g, g * vec3(.86, .94, 1.08) + vec3(.03, .05, .09), build); gl_FragColor = vec4(clamp(g, 0., 1.), c.a); }',
 };
+// eases the decoration-mode wash in and out (called every frame)
+export function setBuildMode(on, dt) { const u = VIBRANT.uniforms.build; u.value += ((on ? 1 : 0) - u.value) * Math.min(1, dt * 6); }
 export function setQuality(q) { E.quality = q; try { localStorage.setItem('cc_quality', q); } catch (e) { } applyQuality(); }
 
 export function resize() {

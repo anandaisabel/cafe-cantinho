@@ -303,8 +303,7 @@ function buildMarket(g, n, sz) {
     cyl(m, .004, .004, .25, '#c9a684', hx, 1.78, .35, {}, 4);
     for (let j = 0; j < 3; j++) sphere(m, .035, col, hx + (j % 2 ? .02 : -.02), 1.6 - j * .06, .35, { rough: .5 });
   }
-  // crates stacked at the side
-  for (const [cx, cy] of [[-1.05, .2], [-1.05, .62]]) { const cr = model('r_crate_buns', .5); if (cr) { cr.position.set(cx, cy, -.1); m.add(cr); } }
+  // (no burger-bun crates: they had nothing to do with a fruit stall)
   // no sign: the stall says what it is with its produce
   // the vendor, standing behind the stall
   const look = { body: 'adult', model: 7 };

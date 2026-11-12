@@ -1,5 +1,5 @@
 // HUD, menus and panels
-import { DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
+import { spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
 import { cafeQuality, qualityLabel } from './events.js';
 import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, POP_MAX } from './state.js';
 import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink } from './sim.js';
@@ -187,9 +187,14 @@ export function openShop(tab = 'mobilia') {
       }
     } else if (tab === 'especiais') {
       body.insertBefore(h('p', 'sub', 'Temperos e ingredientes. Os comuns saem por moedinhas; os raros só por diamantes. O resto aparece na feira lá fora.'), grid);
-      const inShop = SPICES.filter(sp => inShopCfg(sp)).sort((a, b) => RARITY[a.r].o - RARITY[b.r].o);
+      const inShop = SPICES.filter(sp => inShopCfg(sp) && spiceLevel(sp.id) !== null).sort((a, b) => spiceLevel(a.id) - spiceLevel(b.id) || RARITY[a.r].o - RARITY[b.r].o);
+      const lvNow = level(S);
       for (const sp of inShop) {
-        const have = spiceCount(sp.id, S), usesGem = !!sp.gprice, R = RARITY[sp.r];
+        const have = spiceCount(sp.id, S), usesGem = !!sp.gprice, R = RARITY[sp.r], need = spiceLevel(sp.id);
+        if (need > lvNow) {   // shown so the player knows what is coming, but not buyable before its recipe
+          grid.appendChild(card(thumbSpice(sp.id, 70), sp.n, `${ic('lock', 'mi')} Nível ${need}<br><small>Para: ${RECIPES.filter(r => r.need && r.need.id === sp.id).map(r => r.n).join(', ')}</small>`, `Nível ${need}`, { locked: true, disabled: true }));
+          continue;
+        }
         const cost = usesGem ? sp.gprice : sp.price, got = usesGem ? (S.gems || 0) : S.coins;
         const uses = RECIPES.filter(r => r.need && r.need.id === sp.id).map(r => r.n).join(', ');
         grid.appendChild(card(thumbSpice(sp.id, 70), sp.n,
@@ -475,7 +480,7 @@ export function openInventory(tab = 'ingr') {
 export function marketStock(S) {
   const m = S.market || (S.market = { at: -1e9, seed: 1, items: [] });
   const every = MARKET_EVERY * 60000;
-  if (now() - m.at >= every) { m.at = now(); m.seed = (m.seed * 7919 + Math.floor(now() / every) + 17) & 0x7fffffff; m.items = rollMarket(m.seed); save(); }
+  if (now() - m.at >= every) { m.at = now(); m.seed = (m.seed * 7919 + Math.floor(now() / every) + 17) & 0x7fffffff; m.items = rollMarket(m.seed, level(S)); save(); }
   return m;
 }
 export const marketLeft = S => Math.max(0, MARKET_EVERY * 60000 - (now() - (S.market ? S.market.at : 0))) / 1000;
@@ -490,8 +495,9 @@ export function marketInto(body, grid, reopen) {
   {
     if (!grid.parentNode) body.appendChild(grid);
     body.insertBefore(h('p', 'sub', `A banca do seu Jorge troca de estoque sozinha. Carregamento novo em <b>${fmtTime(marketLeft(S))}</b>. Alguns itens só aparecem aqui.`), grid);
-    const live = m.items.filter(e => e.qty > 0);
-    if (!live.length) grid.appendChild(h('p', 'empty', 'A banca está vazia por enquanto. Volte depois do próximo carregamento.'));
+    // stock rolled before a level-up, or by an older version, may hold things the player cannot use yet
+    const lvNow = level(S), live = m.items.filter(e => e.qty > 0 && spiceLevel(e.id) !== null && spiceLevel(e.id) <= lvNow);
+    if (!live.length) grid.appendChild(h('p', 'empty', lvNow < 4 ? 'A feira vende ingredientes especiais para receitas que você libera a partir do nível 4. Volte quando subir de nível!' : 'A banca está vazia por enquanto. Volte depois do próximo carregamento.'));
     for (const e of live) {
       const sp = spice(e.id); if (!sp) continue;
       const R = RARITY[sp.r], usesGem = !!e.gems, cost = usesGem ? e.gems : e.coins;
@@ -691,7 +697,7 @@ export function openSettings() {
     qr.appendChild(qs); body.appendChild(qr);
     body.appendChild(h('p', 'sub', G.docRef ? 'Seu progresso é salvo automaticamente na sua conta e neste aparelho.' : 'Seu progresso é salvo automaticamente neste aparelho.'));
     body.appendChild(h('div', 'gtitle', 'Como jogar'));
-    body.appendChild(h('div', 'help', `<p>Toque num <b>fogão</b>, <b>máquina de café</b> ou <b>liquidificador</b> para preparar uma receita. Quando ficar pronta, toque de novo para levar ao <b>balcão</b>.</p>
+    body.appendChild(h('div', 'help', `<p>Toque no <b>fogão</b> para preparar um prato. Quando ficar pronto, o chef leva ao <b>balcão</b>.</p><p>Bebidas: compre uma <b>máquina de café</b> ou de <b>suco</b> na loja. Quando aparecer um <b>balão com copo</b> sobre o cliente, toque nele para servir.</p>
       <p>Clientes entram, sentam em <b>cadeiras viradas para uma mesa</b>, pedem um prato do balcão e esperam. O <b>garçom</b> leva o pedido; quanto mais rápido, maior a gorjeta.</p>
       <p>No <b>modo decoração</b>, arraste móveis para mudar de lugar, gire cadeiras e guarde itens no inventário.</p>`));
     const acts = h('div', 'acts');
@@ -757,7 +763,7 @@ export function askName() {
     body.appendChild(h('p', 'sub', 'Como vai se chamar a sua cafeteria? A Bia já está pronta para atender.'));
     const inp = h('input', 'txt'); inp.value = G.S.name; inp.maxLength = 24; body.appendChild(inp);
     const acts = h('div', 'acts'); const ok = h('button', 'btn', 'Abrir as portas');
-    ok.onclick = () => { const v = inp.value.trim(); if (v) G.S.name = v; save(); refreshHUD(); closePanel(); toast('Toque na máquina de café para preparar o primeiro expresso'); };
+    ok.onclick = () => { const v = inp.value.trim(); if (v) G.S.name = v; save(); refreshHUD(); closePanel(); toast('Toque no fogão para preparar o primeiro prato. A máquina de café fica na Loja › Cozinha'); };
     acts.appendChild(ok); body.appendChild(acts); setTimeout(() => inp.select(), 50);
   }, { small: true });
 }

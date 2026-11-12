@@ -25,7 +25,7 @@ export function freshState() {
     floor: 'wood', wall: 'peach', owned: { floor: ['wood'], wall: ['peach'] },
     items: [
       I('door_wood', 0, START_SIZE - 2), I('win_classic', 1, 0), I('win_classic', 0, 2), I('sconce', 3, 0), I('sconce', 0, 1),
-      I('coffee', 1, 0), I('counter', 2, 0), I('stove', 3, 0),
+      I('counter', 2, 0), I('stove', 3, 0),   // no coffee machine at the start: it is bought in the shop
       I('table_round', 2, 2), I('chair_wood', 1, 2, 1), I('chair_wood', 3, 2, 3),
       I('table_round', 4, 4), I('chair_wood', 4, 3, 0), I('chair_wood', 5, 4, 3),
     ],
@@ -174,7 +174,7 @@ export async function load() {
         G.docRef = G.db.doc('cafes/' + G.me);
         remote = docData(await withTimeout(G.docRef.get(), 6000));
       }
-    } else if (FIREBASE_CONFIG) {
+    } else if (FIREBASE_CONFIG && !/[?&]offline/.test(location.search)) {   // ?offline: local testing without touching the live database
       // outside claude.ai: the same social features through Firebase (anonymous login, Google optional)
       const r = await withTimeout(connectFirebase(FIREBASE_CONFIG), 10000);
       if (r) { G.db = r.db; G.user = r.user; G.net = 'firebase'; }

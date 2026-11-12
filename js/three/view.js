@@ -1,5 +1,5 @@
 // Keeps the 3D scene in sync with the simulation; DOM overlays for status, bubbles and floating rewards
-import { THREE, E, project } from './engine.js';
+import { THREE, E, project, setBuildMode } from './engine.js';
 import { buildItem, updateItem, updateTableFood, rotYaw } from './models.js';
 import { buildRoom, tickRoom } from './room3d.js';
 import { buildOutside, tickPedestrians, clearPedestrians, setupCars, tickCars, tickWind, tickNightLights, tickVendor, MARKET } from './outside3d.js';
@@ -7,9 +7,9 @@ import { applyDayNight, NIGHT, clearWorldRegistries } from './daynight.js';
 import { Clock } from '../world/clock.js';
 import { buildChar, animateChar } from './chars3d.js';
 import { mat, cachedGeo, disposeTree } from './kit.js';
-import { ITEMS, recipe, drinkEnergy } from '../config.js';
-import { burnLeft, spoiled, freshLeft, isDirty, doorInUse, waitBudget } from '../sim.js';
-import { G, seatInfo } from '../state.js';
+import { ITEMS, RECIPES, recipe, drinkEnergy } from '../config.js';
+import { burnLeft, spoiled, freshLeft, isDirty, doorInUse, waitBudget, serves } from '../sim.js';
+import { G, seatInfo, level } from '../state.js';
 import { doorY } from '../path.js';
 import { thumbFood } from './thumbs.js';
 import { now, fmtTime, emit } from '../util.js';
@@ -63,8 +63,12 @@ export function syncView(w, t, dt) {
   }
   // ---- the world: always running, whatever the café is doing ----
   applyDayNight(Clock.hours, { x: st.size / 2, z: st.size / 2 }, st.size);
-  tickRoom(t, st, doorInUse(w)); tickVendor(t, dt); tickPedestrians(E.scene, st, t, dt); tickCars(t, dt); tickWind(t); tickNightLights();
+  // decoration mode is a build mode: the whole world holds still (people, vendor, wind), Sims-style
   const editing = G.mode === 'edit' && !G.visiting;
+  if (editing && V.frozenT == null) V.frozenT = t; else if (!editing) V.frozenT = null;
+  const at = editing ? V.frozenT : t, adt = editing ? 0 : dt;
+  setBuildMode(editing, dt);
+  tickRoom(t, st, doorInUse(w)); tickVendor(at, adt); if (!editing) { tickPedestrians(E.scene, st, t, dt); tickWind(t); } tickNightLights();
   V.grid.visible = editing;
   // items
   const seen = new Set(), drag = G.drag;
@@ -107,7 +111,7 @@ export function syncView(w, t, dt) {
     let pull = null;
     if (c.sitting && c.seat) { const ch = st.items.find(i => i.id === c.seat); if (ch) { o.seatYaw = rotYaw(ch.rot); o.seatY = .29; if (seatInfo(st, ch)) pull = [[0, 1], [1, 0], [0, -1], [-1, 0]][ch.rot || 0]; } }
     if (c._celebrate) { const p = (t - c._celebrate) / 900; if (p < 1) o.celebrate = p; else c._celebrate = 0; }
-    animateChar(C, c, t, dt, o);
+    animateChar(C, c, at, adt, o);
     if (pull) { C.root.position.x += pull[0] * CHAIR_PULL; C.root.position.z += pull[1] * CHAIR_PULL; }
   }
   for (const [id, C] of V.chars) if (!live.has(id)) { disposeTree(C.root); C.dom && C.dom.remove(); C.dom2 && C.dom2.remove(); C.dom3 && C.dom3.remove(); V.chars.delete(id); }
@@ -162,7 +166,7 @@ function resolve(k) {
     p.d.style.transform = `translate(${p.sx | 0}px,${y | 0}px)`;
   }
 }
-const SIZE = { drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [62, 26, 2], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
+const SIZE = { 'st drinkready': [84, 30, 3], 'st drinkready ask': [84, 30, 4], drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [62, 26, 2], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
 let placed = [];
 function updateOverlays(w, t) {
   placed = [];
@@ -179,7 +183,16 @@ function updateOverlays(w, t) {
         else if (bl <= 0) { cls = 'st ready burnt'; html = `<b>Queimou</b>`; }
         else { cls = 'st ready' + (bl < .45 ? ' warn' : ''); html = `<b>${bl < .45 ? 'Retire!' : 'Pronto!'}</b>`; }
       } else if (it.pending) { cls = 'st cook wait'; html = `<div class="ring" style="--p:0%">${img(it.pending.r)}</div><small>a caminho</small>`; }
-      else if (!G.visiting) { cls = 'st idle'; html = '<i>+</i>'; }
+      else if (!G.visiting) {
+        const eq = ITEMS[it.type].eq, cooks = RECIPES.some(r => r.eq === eq && !r.drink);
+        if (cooks) { cls = 'st idle'; html = '<i>Cozinhar</i>'; }
+        else {
+          // a drink machine is always ready: say so, and call out when a seated guest is waiting on it
+          const menu = RECIPES.filter(r => r.eq === eq && r.drink && r.lv <= level() && serves(it, r.id));
+          const asks = w.custs.filter(c => c.drink && !c.drinkDone && c.sitting && recipe(c.drink).eq === eq).length;
+          if (menu.length) { cls = 'st drinkready' + (asks ? ' ask' : ''); html = `<b>${img(asks ? w.custs.find(c => c.drink && !c.drinkDone && c.sitting && recipe(c.drink).eq === eq).drink : menu[0].id)}<span>${asks ? 'Pedido!' : 'Pronta'}</span></b>`; }
+        }
+      }
     }
     if (kind === 'table' && isDirty(it) && !G.visiting) { cls = 'st dirty'; html = `<b>Limpar</b>`; }
     if (kind === 'counter' && it.stock && it.stock.left > 0) {
@@ -191,7 +204,7 @@ function updateOverlays(w, t) {
     if (!e.dom) e.dom = el('ov');
     if (e.domKey !== key) { e.dom.className = 'ov ' + cls; e.dom.innerHTML = html; fillSlots(e.dom); e.domKey = key; }
     else if (cls === 'st cook') { const r = e.dom.querySelector('.ring'), s = e.dom.querySelector('small'); const R = recipe(it.cook.r), left = R.t - (now() - it.cook.s) / 1000; r.style.setProperty('--p', ((1 - left / R.t) * 100).toFixed(1) + '%'); s.textContent = fmtTime(left); }
-    const yy = cls === 'st ready' ? 1.55 : cls === 'st dirty' ? .95 : kind === 'counter' ? .75 : 1.3;
+    const yy = cls === 'st ready' ? 1.55 : cls === 'st dirty' ? .95 : cls.startsWith('st drinkready') ? .95 : kind === 'counter' ? .75 : 1.3;
     queue(e.dom, it.x + .5, yy, it.y + .5, cls);
   }
   for (const c of w.custs) {
@@ -219,7 +232,7 @@ function updateOverlays(w, t) {
   // drink orders: a thought bubble with a glass, served by tapping it (Café Mania style)
   for (const c of w.custs) {
     const C = V.chars.get(c.id); if (!C) continue;
-    const want = c.drink && !c.drinkDone && (c.state === 'wait' || c.state === 'eat') && c.sitting && !G.visiting;
+    const want = c.drink && !c.drinkDone && (c.state === 'wait' || c.state === 'eat') && c.sitting && !G.visiting && G.mode !== 'edit';   // hidden while paused in decoration mode
     if (!want) { if (C.dom3) { C.dom3.remove(); C.dom3 = null; } continue; }
     if (!C.dom3) {
       C.dom3 = el('ov drinkb', `<div class="dbub"><div class="dglass">${img(c.drink)}</div></div>`); fillSlots(C.dom3);
