@@ -33,8 +33,8 @@ export function freshState() {
     inv: {},
     market: { at: -1e9, seed: 1, items: [] },
     sconceMig: 1, sinkMig: 1, brewMig: 1,
-    energy: { v: 30, t: 0 },
-    mastery: {}, boost: { sal: 2, tomilho: 1 }, vips: {},
+    energy: { v: 30, w: wall() },
+    mastery: {}, boost: { sal: 2, tomilho: 1 }, vips: {}, dr: { last: '', n: 0 },
     pop: 10,
     avatar: { id: 'avatar', role: 'owner', name: 'Chef', look: { body: 'adult', model: 4 } },
     staff: [{ id: uid(), name: 'Bia', role: 'waiter', look: { body: 'adult', skin: '#f5cba7', hair: '#6b4430', style: 'bun', shirt: '#f2a7a0', pants: '#5b6b8c', model: 3 } }],
@@ -96,10 +96,12 @@ export function migrate(st) {
     }
   }
   if (!st.mastery || typeof st.mastery !== 'object') st.mastery = {};   // times each dish came off the stove
+  if (!st.dr || typeof st.dr !== 'object') st.dr = { last: '', n: 0 };   // daily reward: last claim date and days in a row
   if (!st.vips || typeof st.vips !== 'object') st.vips = {};            // VIP visits and missions, by hero index
   if (!st.boost || typeof st.boost !== 'object') st.boost = { sal: 2, tomilho: 1 };   // spice shelf
   if (!Array.isArray(st.friends)) st.friends = [];   // neighbour codes added by hand (Firebase builds)
-  if (!st.energy || !Number.isFinite(st.energy.v)) st.energy = { v: energyMax(level(st)), t: st.t || 0 };   // energy for serving drinks
+  if (!st.energy || !Number.isFinite(st.energy.v)) st.energy = { v: energyMax(level(st)), w: wall() };   // energy for serving drinks
+  if (!Number.isFinite(st.energy.w)) st.energy.w = wall();   // older saves counted on the game clock: start counting from now
   // saves made before shelf life existed: treat what is on the counters as freshly placed
   for (const i of st.items || []) if (i.stock && !Number.isFinite(i.stock.at)) i.stock.at = st.t || 0;
   if (st.open === undefined) st.open = true;
@@ -252,6 +254,7 @@ export async function load() {
   if (remote && remote.items) { try { st = JSON.parse(JSON.stringify(remote)); } catch (e) { st = { ...remote }; } delete st.owner; delete st.sess; }
   else { st = local; isNew = !local; }
   if (!st || st.v !== 4) isNew = true;
+  G.away = Math.max(0, wall() - ((st && Number.isFinite(st.lastSeen)) ? st.lastSeen : wall()));   // measured BEFORE the first flush rewrites lastSeen
   G.S = migrate(st);
   if (!G.S.world || typeof G.S.world !== 'object') G.S = { ...G.S, world: { min: 8 * 60, day: 1 } };
   G.S.lv = level(G.S);
@@ -275,8 +278,6 @@ export function addBoost(id, n, st = G.S) { st.boost = st.boost || {}; st.boost[
 export function catchUp(st, ms) {
   if (!st || !(ms > 1000)) return 0;
   for (const i of st.items || []) { if (i.cook && Number.isFinite(i.cook.s)) i.cook.s -= ms; if (i.brew && Number.isFinite(i.brew.s)) i.brew.s -= ms; }
-  const e = st.energy;
-  if (e && Number.isFinite(e.t) && e.v < energyMax(level(st))) e.t -= ms;
   // waiters rest while the player is away (1.5 points a minute, as in play)
   for (const d of st.staff || []) if (d.role === 'waiter' && Number.isFinite(d.stam)) { d.stam = Math.min(100, d.stam + ms / 60000 * 1.5); if (d.rest && d.stam >= 40) d.rest = 0; }
   save();
@@ -284,14 +285,17 @@ export function catchUp(st, ms) {
 }
 
 // ---- energy (serving drinks): refills one point per ENERGY_REGEN_S of game time ----
+// It runs on the real clock (e.w, ms): it refills with the game closed or hidden too, and a game-clock reset on
+// another device can never leave the next point hours away (that was a bug: e.t lived on the game clock).
 export function energy(st = G.S) {
-  const max = energyMax(level(st)), e = st.energy || (st.energy = { v: max, t: now() }), step = ENERGY_REGEN_S * 1000;
-  if (e.v >= max) { e.v = Math.min(e.v, max); e.t = now(); return { v: e.v, max, next: 0 }; }
-  const gained = Math.floor((now() - e.t) / step);
-  if (gained > 0) { e.v = Math.min(max, e.v + gained); e.t += gained * step; if (e.v >= max) e.t = now(); }
-  return { v: e.v, max, next: e.v >= max ? 0 : Math.ceil((step - (now() - e.t)) / 1000) };
+  const max = energyMax(level(st)), e = st.energy || (st.energy = { v: max, w: wall() }), step = ENERGY_REGEN_S * 1000, t = wall();
+  if (!Number.isFinite(e.w) || e.w > t) e.w = t;                       // never in the future
+  if (e.v >= max) { e.v = Math.min(e.v, max); e.w = t; return { v: e.v, max, next: 0 }; }
+  const gained = Math.floor((t - e.w) / step);
+  if (gained > 0) { e.v = Math.min(max, e.v + gained); e.w += gained * step; if (e.v >= max) e.w = t; }
+  return { v: e.v, max, next: e.v >= max ? 0 : Math.ceil((step - (t - e.w)) / 1000) };
 }
-export function spendEnergy(n, st = G.S) { const e = energy(st); if (e.v < n) return false; if (e.v >= e.max) st.energy.t = now(); st.energy.v -= n; save(); emit('hud'); return true; }
+export function spendEnergy(n, st = G.S) { const e = energy(st); if (e.v < n) return false; if (e.v >= e.max) st.energy.w = wall(); st.energy.v -= n; save(); emit('hud'); return true; }
 
 // ---- popularity (0–105, Café Mania style): +0.1 per happy guest, −0.3 per guest who leaves upset ----
 export const POP_MAX = 105;

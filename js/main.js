@@ -107,7 +107,7 @@ async function boot() {
   if (!G.S.world) G.S.world = { min: 8 * 60, day: 1 };
   Clock.bind(G.S.world); Clock.set(DAY_HOUR);          // fixed, friendly daylight: no day/night cycle
   setClock(G.S.t);                                      // resume every gameplay timer where it stopped
-  catchUp(G.S, wall() - (G.S.lastSeen || wall()));      // ...except stoves and energy, which kept going while closed
+  catchUp(G.S, G.away || 0);                            // ...except stoves, which kept going while closed
   G.world = makeWorld(G.S, true);
   G.beforeSave = () => { if (G.world && G.world.own) G.S.guests = SIM.snapshotGuests(G.world); };
   fitRoom(G.S.size, topPad(), botPad());
@@ -119,6 +119,7 @@ async function boot() {
   requestAnimationFrame(loop);
   setTimeout(() => document.getElementById('loading').classList.add('gone'), 250);
   if (isNew) setTimeout(UI.askName, 700);
+  else setTimeout(() => { if (UI.dailyReady()) UI.openDaily(); }, 2200);   // the daily reward pops up once a day
   window.__now = () => nowFn(); window.__ITEMS = CFG_ITEMS; window.__RENDER = render; window.__CACHE = cacheSizes; window.__BUILD = buildItem; window.__DISPOSE = disposeTree; window.__SIM = SIM; window.__G = G; window.__E = E; window.__THREE = THREE; window.__UI = UI; window.__LOGIN = LOGIN; window.__Clock = Clock; window.__ff = s => { for (let i = 0; i < s * 30; i++) { advanceClock(1000 / 30); tick(G.world, 1 / 30, false); } };
 }
 boot().catch(e => { status('Ops, algo deu errado ao abrir: ' + (e && e.message || e)); console.error(e); });

@@ -48,7 +48,7 @@ function restoreGuests(w) {
     if (!t || ch.dirty || w.custs.some(c => c.seat === ch.id) || !g.look) continue;
     const c = newChar(g.look, 'cust');
     Object.assign(c, { name: g.name, vip: g.vip, seat: ch.id, order: g.order, drink: g.drink, drinkDone: g.drinkDone, drinkSat: g.drinkSat,
-      patience: Math.max(.4, g.patience), sat: g.sat, mood: 'happy', sitting: true, alpha: 1, gx: ch.x + .5, gy: ch.y + .5, t0: now(), bornT: now() });
+      patience: Math.max(.4, g.patience), sat: g.sat, mood: 'happy', sitting: true, sitRot: ch.rot || 0, alpha: 1, gx: ch.x + .5, gy: ch.y + .5, t0: now(), bornT: now() });
     sitFacing(c, ch.rot || 0);
     if (g.state === 'eat' && g.dish && recipe(g.dish)) {
       c.state = 'eat'; c.dish = g.dish; c.eatT = g.eatT; c.table = t.id;
@@ -105,6 +105,20 @@ function route(w, c, target) {
   return true;
 }
 export function layoutChanged(w) {
+  // a guest whose chair was moved, turned or put away stands up where they were and sits again on the new spot (§15)
+  for (const c of w.custs) {
+    if (!c.sitting || !c.seat) continue;
+    const ch = w.st.items.find(i => i.id === c.seat);
+    const same = ch && seatInfo(w.st, ch) && Math.abs(ch.x + .5 - c.gx) < .01 && Math.abs(ch.y + .5 - c.gy) < .01 && c.sitRot === (ch.rot || 0);
+    if (same) continue;
+    for (const s of w.staff) if (s.job && s.job.cust === c.id) dropJob(w, s);   // a waiter on the way to this guest starts over
+    if (c.table && w.tableFood[c.table]) w.tableFood[c.table] = w.tableFood[c.table].filter(f => f.cust !== c.id);
+    c.resume = c.state === 'eat' ? { state: 'eat', dish: c.dish, eatT: c.eatT } : { state: c.state };
+    c.sitting = false; c.waiter = null; c.wp = []; c.moving = false;
+    if (ch && seatInfo(w.st, ch) && route(w, c, { kind: 'seat', id: ch.id })) { c.state = 'toSeat'; continue; }
+    c.seat = null;
+    if (!trySeat(w, c)) { c.state = 'waitSeat'; c.t0 = now(); c.resume = null; }
+  }
   for (const c of [...w.custs, ...w.staff]) if (c.target && c.wp.length && !c.sitting) { if (!route(w, c, c.target)) { c.wp = []; if (c.job) dropJob(w, c); } }
 }
 
@@ -462,6 +476,7 @@ function deliver(w, c, rid) {
   if (w.own) emit('sound1', 'plate');            // the plate lands on the table
   c.state = 'eat'; c.eatT = 0; c.dish = rid; c.mood = 'eating';
   const ch = w.st.items.find(i => i.id === c.seat), t = ch && seatInfo(w.st, ch);
+  c.sitRot = ch ? (ch.rot || 0) : 0;
   if (t) { c.table = t.id; (w.tableFood[t.id] = w.tableFood[t.id] || []).push({ r: rid, dir: ((ch.rot || 0) + 2) % 4, cust: c.id, eaten: 0 }); }
   c.sat = clamp(.25 + c.patience * .75 + Math.min(.15, charm(w.st) * .01) + (c.drinkSat === 2 ? .2 : 0), 0, 1);   // a 'rep' drink served first still counts
   showMood(w, c, c.sat >= .85 ? 'love' : c.sat >= .55 ? 'happy' : 'neutral');          // the food arrives
@@ -573,7 +588,14 @@ function updateCustomers(w, dt) {
       case 'toSeat': {
         const ch = st.items.find(i => i.id === c.seat);
         if (!ch || !seatInfo(st, ch)) { c.seat = null; if (!trySeat(w, c)) { c.state = 'waitSeat'; c.t0 = t; } break; }
-        if (arrived) { c.sitting = true; c.gx = ch.x + .5; c.gy = ch.y + .5; sitFacing(c, ch.rot || 0); c.state = 'menu'; c.t0 = t; c.moving = false; }
+        if (arrived) {
+          c.sitting = true; c.gx = ch.x + .5; c.gy = ch.y + .5; sitFacing(c, ch.rot || 0); c.sitRot = ch.rot || 0; c.moving = false; c.t0 = t;
+          const R = c.resume; c.resume = null;
+          if (R && R.state === 'eat' && R.dish) {     // sat down again after the chair moved: the plate comes along
+            const tb = seatInfo(st, ch); c.state = 'eat'; c.dish = R.dish; c.eatT = R.eatT || 0; c.table = tb.id;
+            (w.tableFood[tb.id] = w.tableFood[tb.id] || []).push({ r: R.dish, dir: ((ch.rot || 0) + 2) % 4, cust: c.id, eaten: Math.min(1, c.eatT / 8) });
+          } else c.state = R && R.state === 'wait' ? 'wait' : 'menu';
+        }
         break;
       }
       case 'menu':
@@ -622,7 +644,7 @@ function dropJob(w, s) {
   if (j.kind === 'serve') { const c = w.custs.find(c => c.id === j.cust); if (c && c.waiter === s.id) c.waiter = null; if (s.carry && j.phase === 'toTable') { const cnt = targetCounter(w.st, s.carry); if (cnt) putOnCounter(cnt, s.carry, 1); } }
   if (j.kind === 'drink') { const c = w.custs.find(x => x.id === j.cust); if (c && c.drinkWaiter === s.id) c.drinkWaiter = null; }
   if (j.kind === 'clean' || j.kind === 'bin') s.cookAnim = false;
-  if (j.kind === 'bus' && j.phase === 'toSink') { const ch = w.st.items.find(i => i.id === j.seat); if (ch && ch.dirty === 2) ch.dirty = 1; }   // dishes go back on the table, never vanish
+  if (j.kind === 'bus' && j.phase === 'toSink') for (const id of (j.seats || [j.seat])) { const ch = w.st.items.find(i => i.id === id); if (ch && ch.dirty === 2) ch.dirty = 1; }   // dishes go back on the table, never vanish
   if (j.kind === 'plate' && s.carry) { const cnt = targetCounter(w.st, s.carry); if (cnt) putOnCounter(cnt, s.carry, s.carryN || 1); }
   s.carry = null; s.job = null; s.wp = []; s.target = null; s.faceTo = null; s.cookAnim = false;
 }
@@ -657,7 +679,8 @@ function waiterAI(w, s) {
   }
   }
   // nothing to serve: take the dirty dishes guests left to the sink
-  const busy = new Set(w.staff.filter(x => x.job && x.job.kind === 'bus').map(x => x.job.seat));
+  const busy = new Set(w.staff.filter(x => x.job && x.job.kind === 'bus').flatMap(x => x.job.seats || [x.job.seat]));
+  const busyTables = new Set(w.staff.filter(x => x.job && x.job.kind === 'bus' && x.job.phase === 'toTable').map(x => x.job.table));
   const sk = sinks(w.st);
   w.noSink = !sk.length && dirtySeats(w.st).length > 0;
   if (w.noSink && w.own && !w.noSinkWarned) { w.noSinkWarned = 1; emit('nosink'); }   // once per session
@@ -665,6 +688,7 @@ function waiterAI(w, s) {
   w.cleanT = w.cleanT || {};
   for (const ch of w.st.items.filter(i => i.dirty === 1 && !busy.has(i.id))) {
     const t = seatInfo(w.st, ch);
+    if (t && busyTables.has(t.id)) continue;   // another waiter is already on the way to clear this table
     if (!t) { ch.dirty = 0; continue; }                     // the table was moved away: nothing left to pick up
     // `near`: a table boxed in by chairs on every side is reached from the closest free tile
     if (route(w, s, { kind: 'item', id: t.id, near: true })) { delete w.cleanT[ch.id]; s.job = { kind: 'bus', seat: ch.id, table: t.id, phase: 'toTable' }; return; }
@@ -826,24 +850,28 @@ function jobArrive(w, s) {
     if (w.own) { addFloat(w, c.x + .5, c.y + .5, 60, 'descartado', 'neg'); save(); }
   } else if (j.kind === 'clean') { s.job = null; s.cookAnim = false;   // old saves' table wiping: now done by 'bus'
   } else if (j.kind === 'bus') {
-    const ch = st.items.find(i => i.id === j.seat);
-    if (!ch || !ch.dirty) { s.job = null; s.cookAnim = false; s.carry = null; s.idleT = .5; return; }
+    const mine = () => (j.seats || [j.seat]).map(id => st.items.find(i => i.id === id)).filter(ch => ch && ch.dirty);
+    if (!mine().length) { s.job = null; s.cookAnim = false; s.carry = null; s.idleT = .5; return; }
     if (j.phase === 'toTable') {
       const t = st.items.find(i => i.id === j.table);
       if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = t ? [t.x + .5, t.y + .5] : null; return; }
       if (now() - j.t0 < CLEAN_MS) return;
-      s.cookAnim = false; ch.dirty = 2; s.carry = 'dirty'; j.phase = 'toSink'; j.t0 = 0;
+      // every dirty seat of this table is cleared in one go (not one plate per trip)
+      const all = t ? dirtySeats(st, t).filter(ch => ch.dirty === 1) : mine();
+      j.seats = all.map(ch => ch.id); for (const ch of all) ch.dirty = 2;
+      s.cookAnim = false; s.carry = 'dirty'; j.phase = 'toSink'; j.t0 = 0;
       if (w.own) emit('sound1', 'cutlery');
       const sink = nearestSink(w, s);
       if (!sink || !route(w, s, { kind: 'item', id: sink.id })) { j.sink = sink && sink.id; j.stuck = now(); } else j.sink = sink.id;
     } else {
       const sink = st.items.find(i => i.id === j.sink) || nearestSink(w, s);
-      if (!sink) { ch.dirty = 1; s.carry = null; s.job = null; s.idleT = 1; return; }   // the sink was removed: dishes back on the table
+      if (!sink) { for (const ch of mine()) ch.dirty = 1; s.carry = null; s.job = null; s.idleT = 1; return; }   // the sink was removed: dishes back on the table
       // can't reach the sink from here: after a few seconds the dishes get washed anyway, never left in the air
       if (j.stuck && now() - j.stuck < 3000) return;
       if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = [sink.x + .5, sink.y + .5]; return; }
-      if (now() - j.t0 < (ITEMS[sink.type].wash || 2000)) return;
-      s.cookAnim = false; ch.dirty = 0; s.carry = null; s.job = null; s.idleT = .6; tire(w, s, STAMINA_BUS);
+      const n = mine().length;
+      if (now() - j.t0 < (ITEMS[sink.type].wash || 2000) * (1 + (n - 1) * .35)) return;
+      s.cookAnim = false; for (const ch of mine()) ch.dirty = 0; s.carry = null; s.job = null; s.idleT = .6; tire(w, s, STAMINA_BUS);
       if (w.own) { emit('sound1', 'cutlery'); addFloat(w, sink.x + .5, sink.y + .5, 70, '✨', 'xp'); save(); }
     }
   } else if (j.kind === 'plate') {

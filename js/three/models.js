@@ -617,8 +617,8 @@ export function updateTableFood(entry, foods, dirty) {   // dirty: directions of
     for (const f of entry.tfoods || []) disposeTree(f); entry.tfoods = [];
     for (const dir of dirty) {
       const D = [[0, 1], [1, 0], [0, -1], [-1, 0]][dir], d = dirtyDishes();
-      d.position.copy(new THREE.Vector3(D[0] * .14, entry.topY, D[1] * .14).applyAxisAngle(new THREE.Vector3(0, 1, 0), -entry.group.rotation.y));
-      d.scale.setScalar(.62); entry.group.add(d); entry.tfoods.push(d); d.userData.f = { eaten: 0, dirty: 1 };
+      d.position.copy(new THREE.Vector3(D[0] * .3, entry.topY, D[1] * .3).applyAxisAngle(new THREE.Vector3(0, 1, 0), -entry.group.rotation.y));
+      d.scale.setScalar(.5); entry.group.add(d); entry.tfoods.push(d); d.userData.f = { eaten: 0, dirty: 1 };
     }
     for (const f of foods || []) {
       const m = food3d(f.r); const D = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.dir];

@@ -132,7 +132,7 @@ export function openEnergy() {
     b.disabled = full || !can;
     b.onclick = () => {
       const x = energy(); if (x.v >= x.max || (S.gems || 0) < REFILL_GEMS) return;
-      addGems(-REFILL_GEMS); S.energy.v = x.max; S.energy.t = now(); save(); sfx('level'); refreshHUD();
+      addGems(-REFILL_GEMS); S.energy.v = x.max; S.energy.w = Date.now(); save(); sfx('level'); refreshHUD();
       toast(`Energia cheia! −${REFILL_GEMS} diamantes`); closePanel();
     };
     const acts = h('div', 'acts'); acts.appendChild(b); body.appendChild(acts);
@@ -320,9 +320,7 @@ function backToPlay() {
 
 export function itemBusy(it) {
   const w = G.world;
-  if (w.custs.some(c => c.seat === it.id && c.sitting)) return 'Tem um cliente sentado aqui';
   if (ITEMS[it.type].kind === 'table' && (w.tableFood[it.id] || []).length) return 'Tem gente comendo nessa mesa';
-  if (ITEMS[it.type].kind === 'chair' && w.custs.some(c => c.seat === it.id)) return 'Um cliente está indo sentar aqui';
   return null;
 }
 export function rotateSel() {
@@ -747,7 +745,13 @@ export function openAvatar() {
     acts.appendChild(ok); body.appendChild(acts);
   });
 }
-function renewShift(s) { s.stam = 100; s.rest = 0; save(); sfx('level'); refreshHUD(); toast(`${s.name} começou um turno novo!`); closePanel(); }
+// new shift: the saved record and the live character are both reset, and she goes back to work right away
+function renewShift(s) {
+  const rec = G.S.staff.find(x => x.id === s.id) || s, rt = G.world && G.world.staff.find(x => x.id === s.id);
+  for (const d of new Set([s, rec, rt && rt.data])) if (d) { d.stam = 100; d.rest = 0; }
+  if (rt) { rt.idleT = 0; rt.wp = []; }
+  save(); flush(true); sfx('level'); refreshHUD(); toast(`${s.name} começou um turno novo!`); closePanel();
+}
 on('collecttip', id => {
   const it = G.S.items.find(i => i.id === id); if (!it) return;
   const T = ITEMS[it.type].tip, r = collectTip(G.world, it);
@@ -756,6 +760,36 @@ on('collecttip', id => {
   else { toast(`+${r} moedas de gorjeta!`); refreshHUD(); }
 });
 on('tired', n => toast(`💤 ${n} precisa descansar. Toque no nome para dar um turno novo.`));
+// ---------------- daily reward (7-day calendar) ----------------
+const DAILY = [
+  { gems: 2 }, { coins: 150 }, { boost: 'tomilho' }, { coins: 300 }, { gems: 3 }, { coins: 600 }, { box: 1 },
+];
+const dayIdx = () => { const d = G.S.dr, y = new Date(Date.now() - 864e5).toISOString().slice(0, 10); return d.last === today() ? -1 : d.last === y ? d.n % 7 : 0; };
+export const dailyReady = () => G.S && !G.visiting && dayIdx() >= 0;
+export function openDaily() {
+  const S = G.S, idx = dayIdx(), claimed = idx < 0;
+  const shown = claimed ? (S.dr.n - 1 + 7) % 7 : idx;
+  openPanel('Recompensa diária', 'gift', body => {
+    const cal = h('div', 'dcal');
+    DAILY.forEach((r, i) => {
+      const done = claimed ? i <= shown : i < idx, cur = !claimed && i === idx;
+      const icon = r.gems ? ICON.gem : r.coins ? ICON.coin : r.boost ? ICON['b_' + r.boost] : ICON.gift;
+      const txt = r.gems ? r.gems : r.coins ? r.coins : r.boost ? '1' : '+5';
+      cal.appendChild(h('div', 'dday' + (done ? ' done' : '') + (cur ? ' cur' : ''), `<b>Dia ${i + 1}</b><span class="dic">${icon}</span><small>${r.box ? 'Caixa' : txt}</small>${done ? '<i class="dck">✓</i>' : ''}`));
+    });
+    body.appendChild(cal);
+    body.appendChild(h('p', 'sub', claimed ? 'Você já pegou o prêmio de hoje. Volte amanhã para continuar a sequência!' : 'Entre todos os dias para não perder a sequência. No dia 7 vem uma caixa surpresa.'));
+    const b = h('button', 'btn big dgo', claimed ? 'Volte amanhã' : 'Resgatar'); b.disabled = claimed;
+    b.onclick = () => {
+      const r = DAILY[idx];
+      if (r.gems) addGems(r.gems); if (r.coins) addCoins(r.coins); if (r.boost) addBoost(r.boost, 1);
+      if (r.box) { addGems(5); addBoost('instant', 1); addBoost('sal', 2); }
+      S.dr = { last: today(), n: idx + 1 }; save(); sfx('level'); refreshHUD();
+      toast(r.box ? 'Caixa surpresa: 5 diamantes, 1 Condimento Instantâneo e 2 Sal!' : 'Recompensa do dia resgatada!'); openDaily();
+    };
+    body.appendChild(h('div', 'acts')).appendChild(b);
+  }, { cls: 'dailyp' });
+}
 export function showStaff(s) {
   openPanel(s.name, 'team', body => {
     const row = h('div', 'cookrow'); row.appendChild(thumbChar(s.look, s.role, 84));
@@ -764,7 +798,7 @@ export function showStaff(s) {
     if (s.role === 'waiter') {
       // stamina (§18): serving and clearing tire the waiter; a new shift brings them back at once
       const v = Math.round(stamina(s)), tired = isTired(s);
-      const box = h('div', 'mstate' + (tired ? ' bad' : v < 30 ? ' warn' : ''), `<span><b>Disposição: ${v}%</b>${tired ? ' · descansando até 40%' : ''}</span><div class="pbar stam"><i style="width:${v}%"></i></div><span class="sub">Cada prato servido ou mesa recolhida cansa um pouco. A disposição volta sozinha (1,5% por minuto, também com o jogo fechado).</span>`);
+      const box = h('div', 'mstate' + (tired ? ' bad' : v < 30 ? ' warn' : ''), `<span><b>Disposição: ${v}%</b>${tired ? ` · descansando: volta a trabalhar em ${fmtTime((40 - v) / 1.5 * 60)}` : ''}</span><div class="pbar stam"><i style="width:${v}%"></i></div><span class="sub">Cada prato servido ou mesa recolhida cansa um pouco. A disposição volta sozinha (1,5% por minuto, também com o jogo fechado).</span>`);
       if (v < 100) {
         const lv = level(G.S), coins = renewCoins(lv);
         const row2 = h('div', 'acts');
@@ -862,6 +896,7 @@ export function openSettings() {
       ob.onclick = async () => { await flush(true); try { await G.user.signOut(); } catch (e) { } location.reload(); };
       ar.appendChild(ob); body.appendChild(ar);
     }
+    const dr = h('div', 'setrow', `${ic('gift', 'mi')} Recompensa diária`); const db = h('button', 'btn ghost small', dailyReady() ? 'Resgatar' : 'Ver'); db.onclick = () => { inp.onchange(); openDaily(); }; dr.appendChild(db); body.appendChild(dr);
     const xr = h('div', 'setrow', `${ic('box', 'mi')} Levar meu café`);
     const xb = h('div', 'seg');
     const ex = h('button', '', 'Exportar'); ex.onclick = async () => { await flush(true); toast(await copyText(exportCafe()) ? 'Código do café copiado. Cole em "Importar" no outro lugar' : 'Não deu para copiar'); };

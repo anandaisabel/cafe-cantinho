@@ -66,9 +66,16 @@ export function buildChar(look, role) {
   // carried tray
   const tray = new THREE.Group(); tray.position.set(.2, .3, .2); tray.visible = false; rig.add(tray);
   cyl(tray, .14, .14, .014, '#cfc8c0', 0, 0, 0, { rough: .3, metal: .6 }, 20);
-  // menu card (when reading)
-  const menu = box(rig, .16, .17, .01, '#c99a5c', 0, .3, .24, { rough: .5 }, .01); menu.rotation.x = -.5; menu.visible = false;
-  box(menu, .11, .014, .004, '#fffaf3', 0, .035, .006, {}, .002); box(menu, .11, .014, .004, '#fffaf3', 0, 0, .006, {}, .002);
+  // menu (when reading): a big open menu held with both hands in front of the chest, pages towards the guest
+  const menu = new THREE.Group(); menu.position.set(0, .09, .18); menu.rotation.x = -.5; menu.visible = false; rig.add(menu);
+  for (const sx of [-1, 1]) {
+    const half = new THREE.Group(); half.position.x = sx * .071; half.rotation.y = sx * .34; menu.add(half);
+    box(half, .142, .19, .012, '#e98d96', 0, 0, .004, { rough: .5 }, .008);              // cover (seen from outside)
+    box(half, .126, .174, .004, '#fffaf3', 0, 0, -.004, { rough: .8 }, .002);            // page
+    for (let i = 0; i < 4; i++) box(half, .088, .008, .003, '#c9a684', -.006, .06 - i * .036, -.0075, {}, .001);   // lines of text
+    box(half, .024, .024, .003, '#f2be55', sx * .034, .066, -.0075, {}, .001);           // little sticker
+  }
+  box(menu, .014, .19, .016, '#c9606c', 0, 0, .012, { rough: .5 }, .005);                // spine
   const spoon = new THREE.Group(); spoon.position.set(-.31, .2, 0); spoon.visible = false;
   cyl(spoon, .008, .008, .2, '#c99a5c', 0, -.06, 0, { rough: .5 }, 6); sphere(spoon, .024, '#c99a5c', 0, -.16, 0, { rough: .4 });
   if (bones['arm-right']) pin('arm-right', spoon); else rig.add(spoon);

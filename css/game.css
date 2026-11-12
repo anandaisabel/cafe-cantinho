@@ -571,3 +571,14 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .nbbadge:empty{display:none}.nbbadge svg{width:11px;height:11px}
 .nbshelf{margin-top:8px;width:100%}
 @media (max-width:640px){.nb{grid-template-columns:1fr;}.nbtabs{flex-direction:row;flex-wrap:wrap}.nbtab{writing-mode:horizontal-tb;transform:none;border-radius:12px}.nbgrid{max-height:34vh}}
+/* daily reward calendar */
+.panel.dailyp{background:#fff3e6;border-color:#e98d96;box-shadow:0 6px 0 #d97580,0 24px 50px rgba(120,60,60,.3)}
+.panel.dailyp .ribbon{background:#f27c88}
+.dcal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.dday{position:relative;background:#f6a4ae;border:2.5px solid #e0707d;border-radius:14px;padding:6px 2px;text-align:center;color:#fff;font:800 12px 'Baloo 2',Fredoka;display:flex;flex-direction:column;align-items:center;gap:2px}
+.dday .dic svg{width:34px;height:34px;display:block}
+.dday small{font-size:13px}
+.dday.cur{background:#ffe9a8;border-color:#f2be55;color:#7a4a12;box-shadow:0 0 0 3px #fff,0 0 0 5px #f2be55;animation:tipbob 1.4s ease-in-out infinite}
+.dday.done{filter:saturate(.5);opacity:.8}
+.dday .dck{position:absolute;top:2px;right:6px;font-style:normal;color:#fff;background:#7cc3a6;border-radius:50%;width:16px;height:16px;line-height:16px;font-size:11px}
+.dgo{width:100%;background:#8fd18a;border-color:#6fb86a;box-shadow:0 3px 0 #6fb86a;color:#fff}

@@ -46,6 +46,13 @@ Estas regras valem para toda tarefa neste repositório.
   config.js, índice = `look.hero`): condição para visitar, prato favorito (`vipOrder`) e missão de 3 favoritos
   (`S.vips`, prêmio 5 diamantes + Condimento + 3 de fama). Lista no painel Metas. O clipe 'Idle' dos VIPs é a mesma
   ação de 'emote-no', por isso `poseChar` força o peso 1 nas miniaturas.
+- **Energia na hora real** (`energy.w`, ms de relógio de parede): recarrega com o jogo fechado e nunca fica horas
+  adiante (o antigo `energy.t` vivia no relógio do jogo e podia ficar no futuro). **Tempo fora**: `G.away` é medido em
+  `load()` ANTES do primeiro `flush`, que reescreve `lastSeen` (esse era o motivo de as comidas não avançarem no Pages).
+- **Louça da mesa toda** (job `bus` leva todos os lugares sujos da mesa de uma vez); prato sujo fica na borda (`.3`).
+  **Cadeira com cliente** pode ser movida/girada/guardada: `layoutChanged` faz o cliente levantar e sentar de novo no
+  novo lugar (`c.resume`, `c.sitRot`), levando pedido e prato. **Cardápio na mão** é um menu aberto de duas folhas.
+  **Recompensa diária** (`S.dr`, `DAILY` em ui.js): calendário de 7 dias, abre sozinha uma vez por dia.
 - **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
   (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
   (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`
