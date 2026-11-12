@@ -384,10 +384,10 @@ function updateCustomers(w, dt) {
     if (isOpen(st) && freeSeats(w).length && w.custs.length < seats(st).length + 1) {   // guests come in even before anything is cooked
       const c = newChar(randLook(), 'cust');
       // VIP guests: rarer, and more likely the better the café is doing
-      if (w.own && level() >= 4) {
-        // deliberately rare: roughly 1 guest in 200 at a modest café, 1 in 25 at an excellent one
+      if (w.own && level() >= 3) {
+        // special but noticeable: roughly 1 guest in 30 at a modest café, 1 in 11 at an excellent one
         const q = cafeQuality(st);
-        if (Math.random() < .005 + q * .035) { c.vip = true; c.look.model = pick([5, 11, 1, 8]); c.look.hero = Math.floor(Math.random() * 5); }   // VIPs arrive as one of the KayKit adventurers
+        if (Math.random() < .03 + q * .06) { c.vip = true; c.look.model = pick([5, 11, 1, 8]); c.look.hero = Math.floor(Math.random() * 5); }   // VIPs arrive as one of the KayKit adventurers
       }
       const o = outsideIn(st); c.gx = o.start[0]; c.gy = o.start[1]; c.alpha = 0; c.state = 'enter'; c.wp = o.wp;
       c.name = pick(['Ana', 'João', 'Clara', 'Seu Zé', 'Dona Rosa', 'Pedro', 'Luísa', 'Marcos', 'Tati', 'Léo', 'Helena', 'Vó Cida', 'Joaquim', 'Sofia', 'Gui']);

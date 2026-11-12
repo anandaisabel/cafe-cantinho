@@ -103,55 +103,52 @@ const SFX = {
   cook: () => tone(300, .15, 'triangle', .08, 0, 1.4),
   level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .08, i * .1)),
   bad: () => tone(300, .25, 'sawtooth', .04, 0, .6),
-  // door: a little brass shop bell over the door, struck twice as the door swings ("dling-dling")
+  // door: the little cluster of bells on a shop door, jingling as it swings (recorded)
   bell: () => {
     if (!AUDIO.bell) return;
-    if (sample('impactBell_heavy_00' + (Math.random() < .5 ? '0' : '1'), { rate: 1.45, vol: .55, jitter: .04 })) { sample('impactBell_heavy_001', { rate: 1.55, vol: .3, when: .2, jitter: .04 }); return; }
-    tone(2350, .6, 'sine', .04); tone(2350 * 2.76, .3, 'sine', .015);
+    if (!sample('doorbell', { rate: 1, vol: .5, jitter: .05 })) tone(2350, .5, 'sine', .03);
   },
   bellOut: () => SFX.bell(),           // same bell on the way out, rate-limited separately from arrivals
   chew: () => { },                     // synthesized chewing sounded artificial: left silent
-  // a glass or cup: recorded glass tap
-  clink: () => { if (!sample('impactGlass_light', { rate: 1.15, vol: .3 })) tone(2800, .2, 'sine', .05); },
-  // fork or knife on a plate: recorded light metal, pitched up to cutlery size
-  cutlery: () => { if (!sample('impactMetal_light', { rate: 1.5, vol: .22 })) tone(3800, .08, 'sine', .04); },
-  // a plate set down on the table: recorded ceramic plate
-  plate: () => { if (!sample('impactPlate_light', { rate: 1.05, vol: .45 })) noise(.06, 'lowpass', 380, 1, .12); },
+  // a cup set down: a soft recorded cutlery touch
+  clink: () => { sample('cutlery_', { rate: 1.05, vol: .18 }); },
+  // fork and knife on a plate (recorded)
+  cutlery: () => { sample('cutlery_', { rate: 1, vol: .3 }); },
+  // a plate set down on the table (recorded)
+  plate: () => { sample('plate', { rate: 1, vol: .42 }); },
   sizzle: () => { noise(.9, 'highpass', 1800, .7, .035); },
   steam: () => { noise(.7, 'bandpass', 2400, 1.2, .05, .5); },
   grind: () => { noise(.55, 'lowpass', 700, 1.5, .05, 1.4); tone(120, .5, 'sawtooth', .025, 0, 1.2); },
   pourliq: () => { noise(.75, 'bandpass', 1500, 2, .045, 2.2); },
-  chatter: () => {
-    // a scrap of conversation: two or three soft vowel blips, never the same twice
-    const base = 180 + Math.random() * 160;
-    const n = 2 + (Math.random() < .5 ? 1 : 0);
-    for (let i = 0; i < n; i++) tone(base * (1 + i * .12 + Math.random() * .1), .11 + Math.random() * .08, 'triangle', .014, i * .13, 1 + (Math.random() - .5) * .3);
-  },
-  footstep: () => { noise(.07, 'lowpass', 420, 1, .028); },
+  chatter: () => { },                  // replaced by the recorded restaurant ambience
+  footstep: () => { },
 };
 export function sfx(n) { if (G.sound && SFX[n]) try { SFX[n](); } catch (e) { } }
 
 // --- room murmur -----------------------------------------------------------
 // Only the little sounds of a working café (voices, cups, cutlery), on their own volume.
 // The old continuous noise bed is gone: it read as traffic rumble.
-let busy = 0;
-export function setAmbience(level) { busy = Math.max(0, Math.min(1, level || 0)); }
-let nextAmb = 0;
-let nextDine = 0;
+// A recorded restaurant ambience (murmur, cups, plates) loops under everything, silent when the room is
+// empty and rising as it fills; a fork on a plate now and then while people eat.
+let busy = 0, bed = null, bedGain = null, nextDine = 0;
+function startBed() {
+  if (bed || !ac || !SAMPLES.ambience) return;
+  bed = ac.createBufferSource(); bed.buffer = SAMPLES.ambience; bed.loop = true;
+  bedGain = ac.createGain(); bedGain.gain.value = 0;
+  bed.connect(bedGain).connect(ambBus); bed.start();
+}
+export function setAmbience(level) {
+  busy = Math.max(0, Math.min(1, level || 0));
+  startBed();
+  if (bedGain) bedGain.gain.setTargetAtTime(busy > .01 ? .12 + busy * .55 : 0, ac.currentTime, 1.2);
+}
 export function tickAmbience(nowMs) {
   if (!ac || AUDIO.amb < .01) return;
-  // the table sounds of a dining room: cutlery and cups while anyone is eating, more often the fuller it is
   const eating = G.world && !G.visiting ? G.world.custs.filter(c => c.state === 'eat').length : 0;
   if (eating && nowMs >= nextDine) {
-    dest = ambBus; try { SFX[Math.random() < .65 ? 'cutlery' : 'clink'](); } catch (e) { } dest = null;
-    nextDine = nowMs + (1800 + Math.random() * 3200) / Math.min(2.2, Math.sqrt(eating));   // calm: a clink every few seconds
+    dest = ambBus; try { SFX.cutlery(); } catch (e) { } dest = null;
+    nextDine = nowMs + (4000 + Math.random() * 5000) / Math.min(2, Math.sqrt(eating));
   }
-  if (nowMs < nextAmb) return;
-  if (busy > .02) {
-    const r = Math.random(), n = r < .55 ? 'chatter' : r < .75 ? 'clink' : r < .9 ? 'cutlery' : 'footstep';
-    dest = ambBus; try { SFX[n](); } catch (e) { } dest = null;
-  }
-  nextAmb = nowMs + 900 + Math.random() * 2600 * (1.3 - busy);
 }
 // Some sounds can fire several times at once (a queue of guests at the door).
 const lastAt = {};
@@ -258,4 +255,4 @@ function schedule() {
   }
 }
 // test hook: lets a headless check measure what the music bus actually outputs
-if (typeof window !== 'undefined') window.__AUDIO = () => ({ ac, musicBus, AUDIO, mus });
+if (typeof window !== 'undefined') window.__AUDIO = () => ({ ac, musicBus, AUDIO, mus, samples: Object.keys(SAMPLES), bed: !!bed, bedLevel: bedGain ? bedGain.gain.value : null });

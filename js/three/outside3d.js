@@ -308,7 +308,8 @@ function buildMarket(g, n, sz) {
   // the vendor, standing behind the stall
   const look = { body: 'adult', model: 7 };
   const V = buildChar(look, 'waiter');
-  V.root.position.set(0, 0, -.72); V.root.rotation.y = Math.PI; m.add(V.root);
+  // the vendor stands out front beside the crates, facing the street, so you can see them
+  V.root.position.set(-1.35, 0, .55); V.root.rotation.y = .35; m.add(V.root);
   vendor = V;
   // produce crates out front, tilted toward the street so the goods read from far away
   const CRATES = [['#f08a24', .055], ['#d8343f', .04], ['#8cc152', .05], ['#9b7ad8', .036], ['#9a6a3c', .04]];
@@ -334,8 +335,8 @@ let vendor = null;
 export function tickVendor(t, dt) {
   if (!vendor) return;
   // a gentle idle so the stall feels staffed
-  animateChar(vendor, { gx: 0, gy: -.72, sitting: false, moving: false, seed: 3, state: 'idle', alpha: 1, look: vendor.look, role: 'waiter' }, t, dt);
-  vendor.root.position.set(0, 0, -.72); vendor.root.rotation.y = Math.PI;
+  animateChar(vendor, { gx: -1.35, gy: .55, sitting: false, moving: false, seed: 3, state: 'idle', alpha: 1, look: vendor.look, role: 'waiter' }, t, dt);
+  vendor.root.position.set(-1.35, 0, .55); vendor.root.rotation.y = .35;
 }
 // ---------- pedestrians (decorative, no interaction) ----------
 const walkers = [];

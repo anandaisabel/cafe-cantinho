@@ -41,6 +41,9 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
+- **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.7×.
+- **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);
+  chance de 3% a 9% por cliente a partir do nível 3. Vendedor da feira fica na frente da barraca.
 - **Um cliente por cadeira** (`freeSeats`): mesas recebem vários clientes; mesa suja não recebe novos até ser limpa.
 - **Modo decoração = modo construção** (estilo The Sims): simulação, bonecos, pedestres, vendedor e vento congelam,
   a cena fica azulada (`setBuildMode`, uniform `build` do passe VIBRANT) e a faixa `.buildbanner` avisa a pausa.
@@ -48,10 +51,11 @@ Estas regras valem para toda tarefa neste repositório.
   dele. Ingredientes sem receita não são vendidos. **Café novo começa sem cafeteira** (custa 260 na loja).
 - **Etiquetas dos equipamentos**: fogão parado mostra "Cozinhar"; máquina de bebida mostra "Pronta" ou "Pedido!".
 - **`?offline`** no endereço ignora o Firebase: use para testar sem gravar cafés de teste no banco real.
-- **Sons gravados (CC0 Kenney Impact Sounds)** em `assets/sfx/*.wav` (mono 22 kHz, embutidos por `build.py` em
-  `js/sfx-data.js`): sino da porta (2 toques, na entrada `bell` e na saída `bellOut`), prato, copo e talheres.
-  Os sintetizados soavam artificiais. Mastigar ficou mudo. Conversão OGG→WAV foi feita no navegador (sem ffmpeg).
-- **Sons do salão**: prato na mesa (`plate`), talheres e copos a cada poucos segundos enquanto alguém come.
+- **Sons gravados de verdade** (Wikimedia Commons, CC0/domínio público; `assets/sfx/`, licenças em
+  `assets/licenses/wikimedia-commons-sounds.txt`): sininhos de porta (`doorbell`, entrada e saída), talheres
+  (`cutlery_0..3`), prato (`plate`) e um ambiente de restaurante em loop (`ambience.m4a`, AAC) que fica mudo com o
+  café vazio e sobe conforme enche. Os sons de impacto da Kenney acelerados soavam como "batendo prego": removidos.
+  Conversão: o navegador decodifica e recorta, `afconvert` gera o AAC.
 - **Comida dura mais**: balcão 5× (mín. 20 min), fogão espera 3× antes de queimar (mín. 3 min) em `config.js`.
 - **Jukebox**: um toque troca para a próxima música (`nextTrack`); volumes das músicas igualados por medição.
 - **Nomes de classe CSS**: `.chip` e `.track` são da tela de progressão; HUD usa `.hchip`, músicas usam `.song`.
@@ -174,7 +178,7 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 ## Assets
 
 - **KayKit** (Kay Lousberg) — móveis, cozinha, city builder. CC0.
-- **Impact Sounds** (Kenney) — sons gravados, CC0. Licença em `assets/licenses/kenney-impact-sounds.txt`.
+- **Sons** — gravações do Wikimedia Commons (CC0/domínio público), ver `assets/licenses/`.
 - **Mini Characters** (Kenney) — 12 personagens com animações. CC0. Licença em
   `assets/licenses/`.
 - **KayKit Adventurers** (CC0) — os 5 VIPs (`assets/kaykit-heroes.glb`, `tools/pack-heroes.mjs`): sem armas,

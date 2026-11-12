@@ -7,7 +7,7 @@ import { radialTexture } from './textures.js';
 import { food3d } from './food3d.js';
 import { charModel, CHAR_CLIPS, CHAR_POSE, CHAR_COUNT, heroModel, HERO_CLIPS } from './assets.js';
 
-export const CHAR_SCALE = 1.12;   // model units -> tiles (keeps people in proportion with chairs and tables)
+export const CHAR_SCALE = 1.4;    // model units -> tiles: chunky people that read clearly next to furniture and food
 const hash = s => { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
 export const modelOf = L => Number.isFinite(L.model) ? L.model : hash(JSON.stringify(L)) % CHAR_COUNT;
 const bodyScale = L => L.body === 'kid' ? .8 : L.body === 'elder' ? .96 : 1;
@@ -58,7 +58,20 @@ export function buildChar(look, role) {
   const spoon = new THREE.Group(); spoon.position.set(-.31, .2, 0); spoon.visible = false;
   cyl(spoon, .008, .008, .2, '#c99a5c', 0, -.06, 0, { rough: .5 }, 6); sphere(spoon, .024, '#c99a5c', 0, -.16, 0, { rough: .4 });
   if (bones['arm-right']) pin('arm-right', spoon); else rig.add(spoon);
-  return { root, rig, model, mixer, acts, w, bones, tray, menu, spoon, hero, ov: hero ? ['head'] : OVERRIDE, trayFood: null, trayKey: null, look: L, yaw: 0, hx: 0, hz: 0, k: { carry: 0, eat: 0, menu: 0 }, base: {} };
+  // VIPs shine: a pulsing golden halo, a glowing ring on the floor and sparkles drifting up around them
+  let vipFx = null;
+  if (hero) {
+    const glowTex = radialTexture('rgba(255,224,130,.95)', 'rgba(255,200,80,0)');
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffe08a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .8 }));
+    halo.scale.setScalar(1.25); halo.position.y = .55; halo.renderOrder = 3; root.add(halo);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.26, .36, 40), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: .75, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = .02; ring.renderOrder = 2; root.add(ring);
+    const sparkTex = radialTexture('rgba(255,255,240,1)', 'rgba(255,220,120,0)'), sparks = [];
+    for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, color: 0xfff1b0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); sp.userData.ph = i / 8; sp.renderOrder = 4; root.add(sp); sparks.push(sp); }
+    model.traverse(o => { if (o.isMesh && o.material && !o.material.userData.vipGlow) { o.material.userData.vipGlow = 1; o.material.emissive = new THREE.Color(0xffc94a); o.material.emissiveIntensity = .25; } });
+    vipFx = { halo, ring, sparks };
+  }
+  return { root, rig, model, mixer, acts, w, bones, tray, menu, spoon, hero, vipFx, ov: hero ? ['head'] : OVERRIDE, trayFood: null, trayKey: null, look: L, yaw: 0, hx: 0, hz: 0, k: { carry: 0, eat: 0, menu: 0 }, base: {} };
 }
 
 const lerpAng = (a, b, k) => { let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI; if (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
@@ -70,7 +83,8 @@ export function animateChar(C, c, t, dt, o = {}) {
   else if (C.last) { const dx = c.gx - C.last[0], dz = c.gy - C.last[1]; if (Math.hypot(dx, dz) > .0005) C.yaw = lerpAng(C.yaw, Math.atan2(dx, dz), .25); else if (c.faceTo) C.yaw = lerpAng(C.yaw, Math.atan2(c.faceTo[0] - c.gx, c.faceTo[1] - c.gy), .15); }
   C.last = [c.gx, c.gy];
   C.root.rotation.y = C.yaw;
-  C.root.position.set(c.gx, sit ? (o.seatY || .29) + SIT_DY : 0, c.gy);
+  // seated: keep the hip joint on the seat whatever the body size (measured: hip sits .026 above the root per unit of scale)
+  C.root.position.set(c.gx, sit ? (o.seatY || .29) + SIT_DY - .026 * bodyScale(c.look) * CHAR_SCALE : 0, c.gy);
   // which clip
   let clip = 'idle', headX = 0, headZ = 0, jump = 0;
   if (mv) clip = 'walk';
@@ -105,10 +119,21 @@ export function animateChar(C, c, t, dt, o = {}) {
   // tray
   C.tray.visible = !!c.carry;
   if (C.trayKey !== (c.carry || null)) { if (C.trayFood) C.tray.remove(C.trayFood); C.trayFood = null; C.trayKey = c.carry || null; if (c.carry) { C.trayFood = food3d(c.carry); C.trayFood.position.y = .014; C.trayFood.scale.setScalar(2.4); C.tray.add(C.trayFood); } }
+  if (C.vipFx) {   // shimmer: halo breathes, ring pulses, sparkles spiral upward and fade
+    const F = C.vipFx, pulse = .5 + .5 * Math.sin(k * 3.2);
+    F.halo.material.opacity = (.55 + .35 * pulse) * Math.min(1, c.alpha ?? 1); F.halo.scale.setScalar(1.1 + .25 * pulse);
+    F.ring.material.opacity = .45 + .4 * pulse; F.ring.scale.setScalar(1 + .15 * pulse);
+    for (const sp of F.sparks) {
+      const u = (k * .35 + sp.userData.ph) % 1, ang = sp.userData.ph * Math.PI * 2 + k * 1.4;
+      sp.position.set(Math.cos(ang) * .32, .1 + u * 1.15, Math.sin(ang) * .32);
+      sp.material.opacity = Math.sin(u * Math.PI) * Math.min(1, c.alpha ?? 1); sp.scale.setScalar(.07 + .06 * Math.sin(u * Math.PI));
+    }
+    C.model.traverse(o => { if (o.isMesh && o.material && o.material.userData.vipGlow) o.material.emissiveIntensity = .18 + .3 * pulse; });
+  }
   const a = c.alpha ?? 1;
   C.root.visible = a > .05;
   C.rig.scale.setScalar(bodyScale(c.look) * CHAR_SCALE * (.6 + .4 * Math.min(1, a)));
 }
-const SIT_DY = -.07;
+const SIT_DY = -.041;
 // still pose for portraits
 export function poseChar(C) { C.mixer.update(0); }
