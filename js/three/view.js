@@ -172,7 +172,7 @@ function resolve(k) {
     p.d.style.transform = `translate(${p.sx | 0}px,${y | 0}px)`;
   }
 }
-const SIZE = { 'st drinkready': [84, 30, 3], 'st drinkready ask': [84, 30, 4], drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [84, 30, 3], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
+const SIZE = { 'st drinkready': [84, 30, 3], 'st drinkready ask': [84, 30, 4], drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [84, 30, 3], 'st tip': [64, 30, 4], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
 let placed = [];
 function updateOverlays(w, t) {
   placed = [];
@@ -203,6 +203,7 @@ function updateOverlays(w, t) {
       }
     }
     if (kind === 'table' && w.noSink && !G.visiting && st.items.some(ch => ch.dirty && seatInfo(st, ch) === it)) { cls = 'st dirty'; html = `<b>Falta pia</b>`; }
+    if (kind === 'attraction' && !G.visiting && (it.tip || 0) >= 5) { cls = 'st tip'; html = `<b>+${Math.floor(it.tip)}</b>`; }
     if (kind === 'counter' && it.stock && it.stock.left > 0) {
       if (spoiled(it)) { cls = 'st stock bad'; html = `<b>Estragou</b>`; }
       else { const fl = freshLeft(it); cls = 'st stock' + (fl < .3 ? ' warn' : ''); html = `<b>${it.stock.left}</b>`; }
@@ -255,8 +256,8 @@ function updateOverlays(w, t) {
     const name = c.data && c.data.name;
     if (!name || c.alpha < .5) { if (C.dom2) { C.dom2.remove(); C.dom2 = null; } continue; }
     if (!C.dom2) C.dom2 = el('ov nametag');
-    const key = c.role + name;
-    if (C.dom2Key !== key) { C.dom2.className = 'ov nametag ' + c.role; C.dom2.innerHTML = `<span>${name.replace(/[<>&]/g, '')}</span>`; C.dom2Key = key; }
+    const tired = c.role === 'waiter' && c.data.rest, key = c.role + name + (tired ? 'z' : '');
+    if (C.dom2Key !== key) { C.dom2.className = 'ov nametag ' + c.role + (tired ? ' tired' : ''); C.dom2.innerHTML = `<span>${tired ? '💤 ' : ''}${name.replace(/[<>&]/g, '')}${tired ? ' · descansando' : ''}</span>`; C.dom2Key = key; }
     queue(C.dom2, c.gx, 1.18, c.gy, 'nametag');
   }
   // the market stall is tapped directly in 3D (see input.js); no floating label

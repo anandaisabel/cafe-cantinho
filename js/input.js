@@ -142,6 +142,7 @@ function tap(px, py) {
   else if (d.kind === 'counter') openCounter(it);
   else if (d.kind === 'chair') { sfx('click'); toast(seatInfo(st, it) ? 'Lugar pronto para clientes' : 'Gire a cadeira para uma mesa no modo decoração'); }
   else if (d.kind === 'table') { sfx('click'); toast('Coloque cadeiras viradas para a mesa'); }
+  else if (d.kind === 'attraction') emit('collecttip', it.id);
   else if (it.type === 'jukebox') { sfx('click'); const tr = nextTrack(); if (tr) toast(`🎵 Tocando: ${tr.n} · toque de novo para trocar`); }   // a real jukebox: one tap, next song
   else sfx('pop');
 }

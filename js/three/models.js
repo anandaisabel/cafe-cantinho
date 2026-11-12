@@ -383,6 +383,51 @@ function displayModel(entry) {
   box(top, .92, .03, .76, '#c99a5c', 0, .36, 0, { rough: .4, coat: .4 }, .015);
   return g;
 }
+// ---- attractions (animated through entry.parts.anim) ----
+// musical fountain: stone tiers, a jet that rises and falls, and droplets circling the basin
+function fountainModel(entry) {
+  const g = new THREE.Group(), stone = { rough: .7 };
+  lathe(g, [[0, 0], [.42, 0], [.44, .04], [.42, .16], [.36, .16], [.34, .06], [0, .06]], '#e7dccd', stone, 32, 'ftbase');
+  cyl(g, .35, .35, .02, '#9fd3ea', 0, .12, 0, { rough: .05, coat: 1, opacity: .85 }, 28);
+  cyl(g, .06, .08, .42, '#e7dccd', 0, .12, 0, stone, 14);
+  lathe(g, [[0, 0], [.2, 0], [.22, .03], [.18, .07], [0, .05]], '#e7dccd', stone, 24, 'ftbowl').position.y = .52;
+  const water = cyl(g, .17, .17, .015, '#bfe6f5', 0, .56, 0, { rough: .05, coat: 1, opacity: .85 }, 22);
+  const jet = cyl(g, .025, .035, .3, '#d8f1fb', 0, .58, 0, { rough: .05, coat: 1, opacity: .7 }, 10);
+  const drops = [];
+  for (let i = 0; i < 8; i++) drops.push(sphere(g, .022, '#cdeefb', 0, .3, 0, { rough: .05, coat: 1, opacity: .8 }));
+  entry.parts.anim = t => {
+    const k = .6 + .4 * Math.sin(t / 420); jet.scale.y = k; water.scale.setScalar(1 + .04 * Math.sin(t / 200));
+    drops.forEach((d, i) => { const a = i / 8 * Math.PI * 2 + t / 900, h = (t / 700 + i / 8) % 1; d.position.set(Math.cos(a) * (.08 + h * .2), .6 + Math.sin(h * Math.PI) * .18 * k - h * .38, Math.sin(a) * (.08 + h * .2)); });
+  };
+  return g;
+}
+// arcade cabinet: pastel cabinet, a screen that cycles colours, joystick and buttons
+function arcadeModel(entry) {
+  const g = new THREE.Group();
+  box(g, .56, .9, .5, '#cfc0ec', 0, 0, -.04, { rough: .5 }, .04);
+  box(g, .6, .1, .54, '#f6b3b8', 0, .9, -.04, { rough: .4 }, .03);
+  const screenMat = mat('#7cc3a6', { emissive: '#7cc3a6', ei: 1.4 }).clone();
+  const screen = mesh(cachedGeo('arcScr', () => new THREE.PlaneGeometry(.44, .3)), screenMat, 0, .68, .215, g); screen.rotation.x = -.18;
+  box(g, .58, .06, .2, '#a995da', 0, .44, .24, { rough: .5 }, .02);
+  cyl(g, .012, .012, .07, '#555', -.12, .47, .26, {}, 8); sphere(g, .03, '#e98d96', -.12, .54, .26);
+  for (const [x, c] of [[.06, '#ffdf8e'], [.14, '#86bde6'], [.22, '#e98d96']]) cyl(g, .025, .025, .02, c, x, .47, .27, { emissive: c, ei: .6 }, 12);
+  const cols = ['#7cc3a6', '#ffdf8e', '#e98d96', '#86bde6'].map(c => new THREE.Color(c));
+  entry.parts.anim = t => { const i = Math.floor(t / 600) % 4; screenMat.color.copy(cols[i]); screenMat.emissive.copy(cols[i]); screenMat.emissiveIntensity = 1.1 + .5 * Math.abs(Math.sin(t / 150)); };
+  return g;
+}
+// grand piano: black body, open lid, keys that dip as if someone were playing
+function pianoModel(entry) {
+  const g = new THREE.Group(), lac = { rough: .15, coat: 1 };
+  box(g, .8, .2, .62, '#2b2326', 0, .42, -.04, lac, .06);
+  for (const [x, z] of [[-.32, .2], [.32, .2], [0, -.28]]) cyl(g, .035, .03, .42, '#2b2326', x, 0, z, lac, 10);
+  const lid = box(g, .78, .02, .6, '#2b2326', 0, .62, -.1, lac, .01); lid.rotation.x = -.5;
+  box(g, .72, .03, .14, '#fffaf2', 0, .6, .3, { rough: .3 }, .01);
+  const keys = [];
+  for (let i = 0; i < 10; i++) keys.push(box(g, .045, .02, .08, '#2b2326', -.3 + i * .066, .625, .3, lac, .004));
+  box(g, .5, .05, .22, '#8a5a3e', 0, .3, .6, { rough: .5 }, .02);
+  entry.parts.anim = t => keys.forEach((k, i) => { k.position.y = .625 - Math.max(0, Math.sin(t / 160 + i * 1.7)) * .012; });
+  return g;
+}
 // kitchen sink: counter with a steel basin, a goose-neck tap and a little stack of clean plates
 function sinkModel() {
   const g = new THREE.Group();
@@ -426,8 +471,8 @@ const KAY_MAP = {
   armchair: ['f_armchair_pillows', .5], cabinet: ['f_cabinet_medium_decorated', .45], fridge: ['r_fridge_A_decorated', .45], crates: ['r_crate_buns', .42],
   crate_carrots: ['r_crate_carrots', .42], crate_cheese: ['r_crate_cheese', .42], crate_lettuce: ['r_crate_lettuce', .42], crate_steak: ['r_crate_steak', .42], kcabinet: ['r_kitchencabinet', .45],
 };
-const PROC = { sink: sinkModel, dishwasher: dishwasherModel, forno: fornoModel, gelateria: gelatoModel, chocolateira: chocoModel, lustre: lustreModel, vitrine_ouro: goldCaseModel, tapete_persa: rugModel, plant: plantModel, ficus: ficusModel, flowers: flowersModel, sunflower: sunflowerModel, teddy: teddyModel, jukebox: jukeboxModel, display: displayModel };
-const HEIGHT = { sink: .95, dishwasher: .95, kcabinet: 1, forno: 1.55, gelateria: 1.35, chocolateira: 1.3, lustre: 1.9, vitrine_ouro: 1.05, tapete_persa: .06, stove: 1.1, coffee: 1.2, blender: 1.45, counter: .9, lamp: 1.3, ficus: 1.1, shelf: 1.05, fridge: 1.2, jukebox: 1, display: 1, cabinet: .9 };
+const PROC = { fountain: fountainModel, arcade: arcadeModel, piano: pianoModel, sink: sinkModel, dishwasher: dishwasherModel, forno: fornoModel, gelateria: gelatoModel, chocolateira: chocoModel, lustre: lustreModel, vitrine_ouro: goldCaseModel, tapete_persa: rugModel, plant: plantModel, ficus: ficusModel, flowers: flowersModel, sunflower: sunflowerModel, teddy: teddyModel, jukebox: jukeboxModel, display: displayModel };
+const HEIGHT = { fountain: 1, arcade: 1.05, piano: .9, sink: .95, dishwasher: .95, kcabinet: 1, forno: 1.55, gelateria: 1.35, chocolateira: 1.3, lustre: 1.9, vitrine_ouro: 1.05, tapete_persa: .06, stove: 1.1, coffee: 1.2, blender: 1.45, counter: .9, lamp: 1.3, ficus: 1.1, shelf: 1.05, fridge: 1.2, jukebox: 1, display: 1, cabinet: .9 };
 
 export function buildItem(it, opt = {}) {
   const d = ITEMS[it.type], kind = d.kind;
@@ -494,6 +539,7 @@ function burntPuff() {
 }
 export function updateItem(entry, it, t, o) {
   const P = entry.parts, kind = ITEMS[it.type].kind;
+  if (P.anim) P.anim(t);   // attractions keep moving
   // counter stock
   if (kind === 'counter') {
     const n = it.stock && it.stock.left > 0 ? Math.min(3, it.stock.left) : 0;

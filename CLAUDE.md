@@ -38,6 +38,14 @@ Estas regras valem para toda tarefa neste repositório.
   (`BOOSTS`, `S.boost`, `useBoost`, `openShelf`): Sal +5%, Pimenta +10% (um por prato), Tomilho −1 h, Ultrarrápido −6 h,
   Condimento termina, Sálvia salva queimado; compra com moedas ou diamantes. **Livro de receitas** (botão Cardápio)
   filtra por tempo (`recipeCat`). Café novo começa com 2 fogões.
+- **Equipe, atrações e VIPs (fase 6)**: garçons têm `stam` (0–100) no próprio registro de `S.staff`; servir gasta 3,
+  recolher louça 2; em 0 descansam (`rest`) até 40, recuperando 1,5/min (também fechado, em `catchUp`). Turno novo: ⚡5
+  ou moedas (`renewCoins`). O chef nunca cansa. Etiqueta "💤 nome · descansando". **Atrações** (`kind: 'attraction'`:
+  fonte, fliperama, piano) juntam `it.tip` enquanto há clientes, até `tip.cap`; tocar recolhe (algumas gastam energia,
+  +0,2 fama) e cada uma dá +5% de paciência (até +20%). Modelos animados por `entry.parts.anim`. **VIPs** (`VIPS` em
+  config.js, índice = `look.hero`): condição para visitar, prato favorito (`vipOrder`) e missão de 3 favoritos
+  (`S.vips`, prêmio 5 diamantes + Condimento + 3 de fama). Lista no painel Metas. O clipe 'Idle' dos VIPs é a mesma
+  ação de 'emote-no', por isso `poseChar` força o peso 1 nas miniaturas.
 - **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
   (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
   (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`
@@ -233,7 +241,7 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 ## Referência de design
 
 `docs/documento-mestre.md`: especificação completa do jogo (recebida em 2026-11-12). `docs/plano-documento-mestre.md`:
-o que já existe, conflitos e fases (fases 1 a 5 feitas).
+o que já existe, conflitos e fases (fases 1 a 6 feitas).
 
 `docs/referencia-cafe-mania.md`: como o Café Mania funcionava (pesquisa em blogs de fãs) e o que
 ainda falta trazer. Inspiração de mecânica apenas: nunca nome, arte ou textos.

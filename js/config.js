@@ -139,7 +139,22 @@ export const brewTime = R => Math.max(60, R.t * 4);           // seconds to brew
 export const brewYield = R => R.por * 2;                      // glasses per batch
 export const brewCost = R => R.cost * 2;                      // coins per batch
 export const WEAR_WARN = 20, WEAR_MAX = 25, REPAIR_ENERGY = 3;
-export const REFILL_GEMS = 4;                                 // fill the energy bar right away
+export const REFILL_GEMS = 4;
+// Waiters get tired (§18): each dish served or table cleared costs stamina; at 0 they rest until RESTED.
+// Stamina comes back slowly (also with the game closed), or at once with a new shift. The chef never tires.
+export const STAMINA_MAX = 100, STAMINA_SERVE = 3, STAMINA_BUS = 2, STAMINA_REGEN = 1.5, RESTED = 40;   // regen: points per minute
+export const RENEW_ENERGY = 5;
+// VIPs (§7): original characters (the KayKit adventurers, look.hero = index), each with a favourite dish, a condition
+// to visit and a mission: serve the favourite VIP_MISSION times for a big reward. need: { seats, pop, charm, level }
+export const VIP_MISSION = 3;
+export const VIPS = [
+  { n: 'Sir Lancelote', p: 'Cavaleiro educado que adora salão cheio.',   fav: 'lasanha',    alt: 'sanduiche', need: { seats: 8 },  needTxt: '8 lugares ou mais' },
+  { n: 'Grunhilda',     p: 'Bárbara de bom coração e louca por doce.',     fav: 'brigadeiro', alt: 'bolo',      need: { pop: 30 },   needTxt: 'popularidade 30 ou mais' },
+  { n: 'Maga Estrela',  p: 'Só visita cafés cheios de charme.',            fav: 'torta',      alt: 'bolo',      need: { charm: 10 }, needTxt: '10 de charme ou mais' },
+  { n: 'Raposa',        p: 'Ladina simpática, sempre com pressa.',         fav: 'paoqueijo',  alt: 'paoqueijo', need: {},            needTxt: 'qualquer café' },
+  { n: 'Capuz Sombrio', p: 'Misterioso, pede sempre algo com chocolate.',  fav: 'brownie',    alt: 'bolo',      need: { level: 5 },  needTxt: 'café no nível 5 ou mais' },
+];
+export const renewCoins = lv => 40 + lv * 10;                                 // fill the energy bar right away
 export const ENERGY_REGEN_S = 60;                       // one point every minute of play
 export const energyMax = lv => Math.min(50, 20 + lv * 2);
 // speeding a dish up: one energy per minute it still had to cook (at least 1)
@@ -172,6 +187,11 @@ export const ITEMS = {
   ficus:         { n: 'Ficus', d: 'Árvore de interior que enche o canto de verde.',              cat: 'decor', kind: 'decor', price: 95,  lv: 2, charm: 2 },
   shelf:         { n: 'Estante de livros', d: 'Estante com livros e objetinhos decorativos.',  cat: 'decor', kind: 'decor', price: 160, lv: 3, charm: 3, rot: true },
   display:       { n: 'Vitrine de doces', d: 'Vitrine de vidro cheia de doces apetitosos.',   cat: 'decor', kind: 'decor', price: 260, lv: 4, charm: 4, rot: true },
+  // attractions (§6): entertain guests (they wait longer), and collect tips while the café has guests.
+  // tip: coins per minute, cap, and the Energy it takes to collect them
+  fountain:      { n: 'Fonte musical', d: 'Água dançante que distrai quem espera. Junta gorjetas para você recolher.', cat: 'decor', kind: 'attraction', price: 600, lv: 4, charm: 3, tip: { rate: 6, cap: 60, energy: 0 } },
+  arcade:        { n: 'Fliperama', d: 'Joguinho de luzes para os clientes. Junta moedas; recolher gasta 1 de energia.', cat: 'decor', kind: 'attraction', price: 1200, lv: 6, charm: 2, rot: true, tip: { rate: 12, cap: 120, energy: 1 } },
+  piano:         { n: 'Piano de cauda', d: 'Música ao vivo no salão. Junta gorjetas grandes; recolher gasta 2 de energia.', cat: 'decor', kind: 'attraction', price: 2500, lv: 9, charm: 5, rot: true, tip: { rate: 20, cap: 200, energy: 2 } },
   jukebox:       { n: 'Jukebox', d: 'Toca músicas e ilumina o salão com cores.',            cat: 'decor', kind: 'decor', price: 400, lv: 6, charm: 6, rot: true, light: true },
   cactus:        { n: 'Cacto', d: 'Cactinho fofo, quase não dá trabalho.', cat: 'decor', kind: 'decor', price: 30, lv: 1, charm: 1 },
   crate_carrots: { n: 'Caixote de cenouras', d: 'Cenouras da horta, laranjinhas e fresquinhas.', cat: 'decor', kind: 'decor', price: 50, lv: 1, charm: 1, rot: true },

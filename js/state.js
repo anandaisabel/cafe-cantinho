@@ -34,7 +34,7 @@ export function freshState() {
     market: { at: -1e9, seed: 1, items: [] },
     sconceMig: 1, sinkMig: 1, brewMig: 1,
     energy: { v: 30, t: 0 },
-    mastery: {}, boost: { sal: 2, tomilho: 1 },
+    mastery: {}, boost: { sal: 2, tomilho: 1 }, vips: {},
     pop: 10,
     avatar: { id: 'avatar', role: 'owner', name: 'Chef', look: { body: 'adult', model: 4 } },
     staff: [{ id: uid(), name: 'Bia', role: 'waiter', look: { body: 'adult', skin: '#f5cba7', hair: '#6b4430', style: 'bun', shirt: '#f2a7a0', pants: '#5b6b8c', model: 3 } }],
@@ -96,6 +96,7 @@ export function migrate(st) {
     }
   }
   if (!st.mastery || typeof st.mastery !== 'object') st.mastery = {};   // times each dish came off the stove
+  if (!st.vips || typeof st.vips !== 'object') st.vips = {};            // VIP visits and missions, by hero index
   if (!st.boost || typeof st.boost !== 'object') st.boost = { sal: 2, tomilho: 1 };   // spice shelf
   if (!Array.isArray(st.friends)) st.friends = [];   // neighbour codes added by hand (Firebase builds)
   if (!st.energy || !Number.isFinite(st.energy.v)) st.energy = { v: energyMax(level(st)), t: st.t || 0 };   // energy for serving drinks
@@ -273,6 +274,8 @@ export function catchUp(st, ms) {
   for (const i of st.items || []) { if (i.cook && Number.isFinite(i.cook.s)) i.cook.s -= ms; if (i.brew && Number.isFinite(i.brew.s)) i.brew.s -= ms; }
   const e = st.energy;
   if (e && Number.isFinite(e.t) && e.v < energyMax(level(st))) e.t -= ms;
+  // waiters rest while the player is away (1.5 points a minute, as in play)
+  for (const d of st.staff || []) if (d.role === 'waiter' && Number.isFinite(d.stam)) { d.stam = Math.min(100, d.stam + ms / 60000 * 1.5); if (d.rest && d.stam >= 40) d.rest = 0; }
   save();
   return ms;
 }

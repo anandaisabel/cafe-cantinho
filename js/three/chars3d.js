@@ -153,4 +153,5 @@ export function animateChar(C, c, t, dt, o = {}) {
 }
 const SIT_DY = -.041;
 // still pose for portraits
-export function poseChar(C) { C.mixer.update(0); }
+// KayKit's 'Idle' clip is shared by idle and emote-no (same action), and the build loop leaves it at weight 0
+export function poseChar(C) { if (C.hero) C.acts.idle.setEffectiveWeight(1); C.mixer.update(C.hero ? .4 : 0); }

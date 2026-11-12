@@ -1,8 +1,8 @@
 // HUD, menus and panels
-import { DRINK_CAP, brewTime, brewYield, brewCost, REPAIR_ENERGY, REFILL_GEMS, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, RECIPE_CATS, recipeCat, speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
+import { VIPS, VIP_MISSION, RENEW_ENERGY, renewCoins, DRINK_CAP, brewTime, brewYield, brewCost, REPAIR_ENERGY, REFILL_GEMS, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, RECIPE_CATS, recipeCat, speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
 import { cafeQuality, qualityLabel } from './events.js';
 import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, spendEnergy, POP_MAX, stars, masteryCount, boostCount, addBoost } from './state.js';
-import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink, startBrew, brewLeft, emptyMachine, repairMachine, isBroken, isWorn, useBoost, dishLeft, portionsOf } from './sim.js';
+import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink, startBrew, brewLeft, emptyMachine, repairMachine, isBroken, isWorn, stamina, isTired, collectTip, vipNeedMet, useBoost, dishLeft, portionsOf } from './sim.js';
 import { esc, fmtTime, pick, uid, today, on, now } from './util.js';
 import { thumbItem, thumbFood, thumbChar } from './three/thumbs.js';
 import { swatch } from './three/textures.js';
@@ -209,7 +209,7 @@ export function openShop(tab = 'mobilia') {
       const nEq = S.items.filter(i => ITEMS[i.type].kind === 'equip').length + Object.entries(S.inv).filter(([k]) => ITEMS[k] && ITEMS[k].kind === 'equip').reduce((a, [, v]) => a + v, 0);
       for (const [k, d] of Object.entries(ITEMS).filter(([, d]) => d.cat === tab)) {
         const locked = d.lv > l, capped = d.kind === 'equip' && nEq >= stoveCap(l);
-        let desc = locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : capped ? 'Limite de equipamentos no seu nível' : (d.charm ? `+${d.charm} de charme` : d.kind === 'equip' ? 'Prepara: ' + RECIPES.filter(r => r.eq === d.eq).slice(0, 3).map(r => r.n).join(', ') : d.kind === 'chair' ? 'Vire para uma mesa' : d.kind === 'counter' ? 'Guarda os pratos prontos' : d.kind === 'sink' ? 'Lava a louça suja' : 'Lugar para os clientes');
+        let desc = locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : capped ? 'Limite de equipamentos no seu nível' : d.kind === 'attraction' ? `Gorjetas até ${d.tip.cap} · +${d.charm} de charme` : (d.charm ? `+${d.charm} de charme` : d.kind === 'equip' ? 'Prepara: ' + RECIPES.filter(r => r.eq === d.eq).slice(0, 3).map(r => r.n).join(', ') : d.kind === 'chair' ? 'Vire para uma mesa' : d.kind === 'counter' ? 'Guarda os pratos prontos' : d.kind === 'sink' ? 'Lava a louça suja' : d.kind === 'attraction' ? `Junta até ${d.tip.cap} moedas de gorjeta` : 'Lugar para os clientes');
         const gemOnly = !!d.gprice, short = gemOnly ? (S.gems || 0) < d.gprice : S.coins < d.price;
         if (gemOnly) desc = (locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : `<span class="rtag gemonly">Só diamantes</span>`) + (d.charm ? `<br>+${d.charm} de charme` : '');
         const c = card(thumbItem(k, 76), d.n, desc, locked ? `Nível ${d.lv}` : gemOnly ? gprice(d.gprice) : price(d.price), {
@@ -699,11 +699,35 @@ export function openAvatar() {
     acts.appendChild(ok); body.appendChild(acts);
   });
 }
+function renewShift(s) { s.stam = 100; s.rest = 0; save(); sfx('level'); refreshHUD(); toast(`${s.name} começou um turno novo!`); closePanel(); }
+on('collecttip', id => {
+  const it = G.S.items.find(i => i.id === id); if (!it) return;
+  const T = ITEMS[it.type].tip, r = collectTip(G.world, it);
+  if (r === 'energy') { sfx('bad'); toast(`⚡ Recolher aqui gasta ${T.energy} de energia`); bumpEnergy(); }
+  else if (r === 'empty') { sfx('click'); toast(`${ITEMS[it.type].n}: junta até ${T.cap} moedas enquanto há clientes${T.energy ? ` · recolher gasta ⚡${T.energy}` : ''}`); }
+  else { toast(`+${r} moedas de gorjeta!`); refreshHUD(); }
+});
+on('tired', n => toast(`💤 ${n} precisa descansar. Toque no nome para dar um turno novo.`));
 export function showStaff(s) {
   openPanel(s.name, 'team', body => {
     const row = h('div', 'cookrow'); row.appendChild(thumbChar(s.look, s.role, 84));
     row.appendChild(h('div', '', `<div class="cname">${esc(s.name)}</div><div class="cdesc">${ROLES[s.role].n}<br>${ROLES[s.role].d}</div>`));
     body.appendChild(row);
+    if (s.role === 'waiter') {
+      // stamina (§18): serving and clearing tire the waiter; a new shift brings them back at once
+      const v = Math.round(stamina(s)), tired = isTired(s);
+      const box = h('div', 'mstate' + (tired ? ' bad' : v < 30 ? ' warn' : ''), `<span><b>Disposição: ${v}%</b>${tired ? ' · descansando até 40%' : ''}</span><div class="pbar stam"><i style="width:${v}%"></i></div><span class="sub">Cada prato servido ou mesa recolhida cansa um pouco. A disposição volta sozinha (1,5% por minuto, também com o jogo fechado).</span>`);
+      if (v < 100) {
+        const lv = level(G.S), coins = renewCoins(lv);
+        const row2 = h('div', 'acts');
+        const be = h('button', 'btn', `Turno novo ${ic('bolt', 'bi')}${RENEW_ENERGY}`);
+        be.onclick = () => { if (!spendEnergy(RENEW_ENERGY)) { toast(`⚡ Falta energia (precisa de ${RENEW_ENERGY})`); bumpEnergy(); return; } renewShift(s); };
+        const bc = h('button', 'btn ghost', `Hora extra ${price(coins)}`); bc.disabled = G.S.coins < coins;
+        bc.onclick = () => { if (G.S.coins < coins) return; addCoins(-coins); renewShift(s); };
+        row2.append(be, bc); box.appendChild(row2);
+      }
+      body.appendChild(box);
+    }
     const inp = h('input', 'txt'); inp.value = s.name; inp.maxLength = 14; body.appendChild(inp);
     const acts = h('div', 'acts');
     const fire = h('button', 'btn ghost', 'Dispensar');
@@ -759,8 +783,19 @@ export function openGoals() {
     const st = h('div', 'stats');
     st.innerHTML = `<div><b>${S.stats.served}</b><small>clientes atendidos</small></div><div><b>${S.stats.cooked}</b><small>pratos preparados</small></div><div><b>${charm(S)}</b><small>charme</small></div><div><b>${seats(S).length}</b><small>lugares</small></div>`;
     body.appendChild(st);
+    // VIPs: who they are, when they visit, their favourite and their mission
+    body.appendChild(h('div', 'gtitle', 'Clientes VIP'));
+    body.appendChild(h('p', 'sub', `Sirva o prato favorito de um VIP ${VIP_MISSION} vezes para fazer amizade: ${ic('gem', 'mi')}5, um Condimento Instantâneo e +3 de fama.`));
+    const grid = h('div', 'grid'); body.appendChild(grid);
+    VIPS.forEach((V, i) => {
+      const m = S.vips[i] || { visits: 0, fav: 0, done: 0 }, met = vipNeedMet(S, V);
+      const desc = `${esc(V.p)}<br>Favorito: <b>${recipe(V.fav).n}</b><br><span class="${met ? 'okneed' : 'noneed'}">Visita: ${V.needTxt} ${met ? '✓' : ''}</span><br>` +
+        (m.done ? '<b class="okneed">Amizade feita ✓</b>' : `<div class="pbar"><i style="width:${m.fav / VIP_MISSION * 100}%"></i></div><small>Missão ${m.fav}/${VIP_MISSION} · ${m.visits} visitas</small>`);
+      grid.appendChild(card(thumbChar({ body: 'adult', model: 5, hero: i }, 'cust', 60), V.n, desc, null, { active: !!m.done }));
+    });
   });
 }
+on('vipdone', i => { sfx('level'); toast(`🎉 ${VIPS[i].n} fez amizade com o café! +5 diamantes e um Condimento Instantâneo`); refreshHUD(); });
 
 // ---------------- settings ----------------
 export function openSettings() {

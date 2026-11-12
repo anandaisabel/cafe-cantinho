@@ -61,7 +61,7 @@ já faz e organiza o que falta em fases. Nenhuma fase apaga o que já funciona, 
    - Começar com 2 fogões e balcões de ~50 porções.
 4. **Salão (14, 15, 19).** ✅ Feita (mesa 2×1 feita como duas peças que se emendam). Pia, louça por assento, mesa 2x1 de 6 lugares, booths, banquetas, abrir e fechar a porta.
 5. **Bebidas e energia (16, 17).** ✅ Feita (recarga de vizinho fica para a fase 7, social). Máquinas com estoque, sabor, desgaste e conserto; recarga por 4 diamantes; recarga de vizinho.
-6. **Equipe, atrações e VIPs (6, 7, 18).** Cansaço e turnos, atrações com gorjeta, missões de VIP.
+6. **Equipe, atrações e VIPs (6, 7, 18).** ✅ Feita. Cansaço e turnos, atrações com gorjeta, missões de VIP.
 7. **Social (20).** Presente diário grátis, lista de desejos com 3 itens, caixa de presentes, ações por visita.
 8. **Eventos e assets (22, 26).** Primeiro evento sazonal; pacotes Quaternius (CC0) para comida e personagens.
 

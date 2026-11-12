@@ -1,5 +1,5 @@
 // Café simulation: customers, waiters, chefs, cooking and economy
-import { ITEMS, RECIPES, recipe, burnAfter, keepFor, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, DRINK_CAP, brewTime, brewYield, brewCost, WEAR_WARN, WEAR_MAX, REPAIR_ENERGY, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
+import { ITEMS, RECIPES, recipe, burnAfter, keepFor, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, DRINK_CAP, brewTime, brewYield, brewCost, WEAR_WARN, WEAR_MAX, REPAIR_ENERGY, STAMINA_MAX, STAMINA_SERVE, STAMINA_BUS, STAMINA_REGEN, RESTED, VIPS, VIP_MISSION, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
 import { G, level, charm, seats, seatInfo, itemAt, rep, save, addXP, addCoins, addGems, hasIngredients, addSpice, energy, spendEnergy, addPop, stars, masteryBonus, addBoost, boostCount } from './state.js';
 import { findPath, standTiles, nearTiles, doorY, DIRS } from './path.js';
 import { cafeQuality } from './events.js';
@@ -257,7 +257,22 @@ export function showMood(w, c, mood) {
   c._moodAt = now(); c._moodKind = m;
   w.pops.push({ gx: c.gx, gy: c.gy, mood: m, face: true, cust: c.id, age: 0 });
 }
-export const waitBudget = st => 75 * (1 + Math.min(.4, charm(st) * .015));   // seconds a guest will wait for the order
+// seconds a guest will wait for the order: charm helps, and each attraction entertains (+5%, up to +20%)
+export const attractions = st => st.items.filter(i => ITEMS[i.type] && ITEMS[i.type].kind === 'attraction');
+export const waitBudget = st => 75 * (1 + Math.min(.4, charm(st) * .015) + Math.min(.2, attractions(st).length * .05));
+// attractions fill with tips while the café is open and has guests inside
+function tickTips(w, dt) {
+  if (!w.own || !isOpen(w.st) || !w.custs.some(c => c.state !== 'leave' && c.state !== 'enter')) return;
+  for (const it of attractions(w.st)) { const T = ITEMS[it.type].tip; it.tip = Math.min(T.cap, (it.tip || 0) + T.rate * dt / 60); }
+}
+export function collectTip(w, it) {
+  const T = ITEMS[it.type].tip, n = Math.floor(it.tip || 0);
+  if (!T || n < 1) return 'empty';
+  if (T.energy && !spendEnergy(T.energy)) return 'energy';
+  it.tip = 0; addCoins(n); addPop(.2);
+  addFloat(w, it.x + .5, it.y + .5, 80, '+' + n, 'coin'); emit('sound', 'coin'); save();
+  return n;
+}
 export function moodOf(c) {
   if (!c) return 'neutral';
   if (c.state === 'leave') return c.mood === 'angry' ? 'angry' : c.mood === 'sad' ? 'sad' : (c.sat || 0) >= .85 ? 'love' : (c.sat || 0) >= .55 ? 'happy' : 'neutral';
@@ -442,7 +457,7 @@ function pay(w, c) {
   if (c.vip) tip = Math.round(tip * 2.2);
   if (w.own) {
     addCoins(R.price + tip); addXP(c.vip ? 4 : 1);
-    if (c.vip) vipReward(w, c, sat);
+    if (c.vip) { vipReward(w, c, sat); vipMission(w, c); }
     const S = G.S; S.stats.served++; if (sat >= .8) S.stats.happy++;
     S.rep.push(sat); if (S.rep.length > 20) S.rep.shift();
     if (sat >= .6) addPop(c.vip ? .5 : .1);                                    // a happy guest spreads the word
@@ -452,6 +467,25 @@ function pay(w, c) {
   showMood(w, c, sat >= .85 ? 'love' : sat >= .6 ? 'happy' : 'neutral');               // finished, tip left
 }
 
+// ---- VIPs: who may visit, what they order, and their missions ----
+export const vipNeedMet = (st, V) => { const n = V.need || {};
+  return (!n.seats || seats(st).length >= n.seats) && (!n.pop || (st.pop || 0) >= n.pop) && (!n.charm || charm(st) >= n.charm) && (!n.level || level(st) >= n.level); };
+const vipCandidates = st => VIPS.map((V, i) => vipNeedMet(st, V) ? i : -1).filter(i => i >= 0);
+// the favourite when it is on a counter or the café can cook it now; otherwise the second choice
+function vipOrder(w, c) {
+  const V = VIPS[c.look.hero], st = w.st, lv = w.own ? level() : 99;
+  const eqs = new Set(st.items.filter(i => ITEMS[i.type].kind === 'equip').map(i => ITEMS[i.type].eq));
+  const ok = rid => { const R = recipe(rid); return R && (stockOf(st, rid).length || (R.lv <= lv && eqs.has(R.eq) && hasIngredients(R, st))); };
+  return ok(V.fav) ? V.fav : ok(V.alt) ? V.alt : null;
+}
+function vipMission(w, c) {
+  const i = c.look.hero, V = VIPS[i], S = G.S, m = S.vips[i] = S.vips[i] || { visits: 0, fav: 0, done: 0 };
+  m.visits++;
+  if (c.dish !== V.fav || m.done) return;
+  m.fav = Math.min(VIP_MISSION, m.fav + 1);
+  if (m.fav >= VIP_MISSION) { m.done = 1; addGems(5); addBoost('instant', 1); addPop(3); emit('vipdone', i); }
+  else emit('toast', `${V.n} adorou ${recipe(V.fav).n.toLowerCase()}! Missão ${m.fav}/${VIP_MISSION}`);
+}
 // A VIP only pays off if they leave satisfied: that is where Diamantes and rare ingredients come from.
 function vipReward(w, c, sat) {
   G.S.stats.vip = (G.S.stats.vip || 0) + 1;
@@ -476,11 +510,12 @@ function updateCustomers(w, dt) {
       if (w.own && level() >= 3) {
         // special but noticeable: roughly 1 guest in 30 at a modest café, 1 in 11 at an excellent one
         const q = cafeQuality(st);
-        if (Math.random() < .03 + q * .06) { c.vip = true; c.look.model = pick([5, 11, 1, 8]); c.look.hero = Math.floor(Math.random() * 5); }   // VIPs arrive as one of the KayKit adventurers
+        const who = vipCandidates(st);
+        if (who.length && Math.random() < .03 + q * .06) { c.vip = true; c.look.model = pick([5, 11, 1, 8]); c.look.hero = pick(who); }   // VIPs arrive as one of the KayKit adventurers
       }
       const o = outsideIn(st); c.gx = o.start[0]; c.gy = o.start[1]; c.alpha = 0; c.state = 'enter'; c.wp = o.wp;
       c.name = pick(['Ana', 'João', 'Clara', 'Seu Zé', 'Dona Rosa', 'Pedro', 'Luísa', 'Marcos', 'Tati', 'Léo', 'Helena', 'Vó Cida', 'Joaquim', 'Sofia', 'Gui']);
-      if (c.vip) c.name = ['Sir Lancelote', 'Grunhilda', 'Maga Estrela', 'Raposa', 'Capuz Sombrio'][c.look.hero];
+      if (c.vip) c.name = VIPS[c.look.hero].n;
       w.custs.push(c);
     }
   }
@@ -520,7 +555,7 @@ function updateCustomers(w, dt) {
       case 'menu':
         // places the order (food, plus a drink when the café can make one)
         if (t - c.t0 > 2600) {
-          const o = chooseOrder(w);
+          const o = (c.vip && vipOrder(w, c)) || chooseOrder(w);
           if (o) { c.order = o; c.drink = chooseDrink(w); c.state = 'wait'; c.patience = 1; c.mood = 'happy'; showMood(w, c, 'happy'); }
           else if (t - c.t0 > 15000) leave(w, c, 'sad');
         }
@@ -674,6 +709,23 @@ function ownerAI(w, s) {
   }
 }
 // A ready dish moved straight from its equipment to a counter (with a sparkle), when no path exists.
+// ---- waiter fatigue ----
+export const stamina = d => Number.isFinite(d && d.stam) ? d.stam : STAMINA_MAX;
+export const isTired = d => !!(d && d.rest);                 // resting until RESTED
+function tire(w, s, n) {
+  if (!w.own || s.role !== 'waiter' || !s.data) return;
+  const d = s.data; d.stam = Math.max(0, stamina(d) - n);
+  if (d.stam <= 0 && !d.rest) { d.rest = 1; emit('tired', d.name); }
+}
+function restStaff(w, dt) {
+  if (!w.own) return;
+  for (const d of w.st.staff || []) {
+    if (d.role !== 'waiter') continue;
+    const v = stamina(d); if (v >= STAMINA_MAX && !d.rest) continue;
+    d.stam = Math.min(STAMINA_MAX, v + STAMINA_REGEN * dt / 60);
+    if (d.rest && d.stam >= RESTED) { d.rest = 0; emit('rested', d.name); }
+  }
+}
 function nearestSink(w, s) {
   const list = sinks(w.st); if (!list.length) return null;
   return list.sort((a, b) => Math.hypot(a.x + .5 - s.gx, a.y + .5 - s.gy) - Math.hypot(b.x + .5 - s.gx, b.y + .5 - s.gy))[0];
@@ -707,13 +759,13 @@ function jobArrive(w, s) {
       if (!route(w, s, { kind: 'item', id: t.id })) { magicServe(w, s, c, true); return; } // table unreachable
       j.phase = 'toTable';
     } else {
-      deliver(w, c, s.carry); c.waiter = null; s.carry = null; s.job = null; s.idleT = 1.5; if (w.own) save();
+      deliver(w, c, s.carry); c.waiter = null; s.carry = null; s.job = null; s.idleT = 1.5; tire(w, s, STAMINA_SERVE); if (w.own) save();
     }
   } else if (j.kind === 'magic') {
     // holds the plate a moment, stuck where he is... and the guest has it
     if (now() - j.t0 < 700) return;
     const c = w.custs.find(c => c.id === j.cust);
-    if (c && c.state === 'wait' && c.waiter === s.id) { deliver(w, c, s.carry); c.waiter = null; if (w.own) save(); }
+    if (c && c.state === 'wait' && c.waiter === s.id) { deliver(w, c, s.carry); c.waiter = null; tire(w, s, STAMINA_SERVE); if (w.own) save(); }
     else { const cnt = targetCounter(st, s.carry); if (cnt) putOnCounter(cnt, s.carry, 1); }
     s.carry = null; s.job = null; s.idleT = 1.5;
   } else if (j.kind === 'cook') {
@@ -767,7 +819,7 @@ function jobArrive(w, s) {
       if (j.stuck && now() - j.stuck < 3000) return;
       if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = [sink.x + .5, sink.y + .5]; return; }
       if (now() - j.t0 < (ITEMS[sink.type].wash || 2000)) return;
-      s.cookAnim = false; ch.dirty = 0; s.carry = null; s.job = null; s.idleT = .6;
+      s.cookAnim = false; ch.dirty = 0; s.carry = null; s.job = null; s.idleT = .6; tire(w, s, STAMINA_BUS);
       if (w.own) { emit('sound1', 'cutlery'); addFloat(w, sink.x + .5, sink.y + .5, 70, '✨', 'xp'); save(); }
     }
   } else if (j.kind === 'plate') {
@@ -811,6 +863,7 @@ function updateStaff(w, dt) {
     if (s.job && s.job.kind === 'bus' && s.stuckT > 4) { s.stuckT = 0; dropJob(w, s); }   // blocked on the way: pick it up again later
     if (s.job) { if (arrived) jobArrive(w, s); continue; }
     if (!isOpen(w.st) && s.role !== 'owner') { if (!s.wp.length) s.idleT = Math.max(s.idleT, .5); continue; }   // closed: waiters stand down, the chef keeps cooking
+    if (s.role === 'waiter' && isTired(s.data)) { s.wp = []; s.idleT = Math.max(s.idleT, 1); continue; }   // resting: finishes the current job, takes no new one
     if (s.role === 'owner') ownerAI(w, s); else waiterAI(w, s);
     if (!s.job) wander(w, s, dt);
   }
@@ -823,6 +876,8 @@ export function tick(w, dt, paused) {
   w.pops = w.pops.filter(p => p.age < (p.face ? 1.8 : 1.2));
   if (paused) return;
   tickBrews(w);
+  restStaff(w, dt);
+  tickTips(w, dt);
   updateCustomers(w, dt);
   updateStaff(w, dt);
 }

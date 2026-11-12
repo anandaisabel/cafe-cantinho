@@ -538,3 +538,7 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .mstate .ebig{font-size:24px;display:inline-flex;align-items:center;gap:6px}
 .mstate .ebig .mi svg{width:26px;height:26px}
 .btn .bi{display:inline-flex}
+.mstate .pbar.stam{width:100%;margin:0}
+.ov.nametag.tired span{background:#fde3e5;border-color:var(--k-pink2);color:#a24a55}
+.ov.st.tip b{background:linear-gradient(#ffe39c,#f2be55);border:2px solid #fffaf3;color:#7a4a12;border-radius:999px;padding:0 10px;font:800 13px 'Baloo 2',Fredoka;box-shadow:0 2px 0 rgba(122,74,18,.35);animation:tipbob 1.4s ease-in-out infinite}
+@keyframes tipbob{50%{transform:translateY(-3px)}}
