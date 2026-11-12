@@ -111,6 +111,12 @@ async function boot() {
   if (!G.S.world) G.S.world = { min: 8 * 60, day: 1 };
   Clock.bind(G.S.world); Clock.set(DAY_HOUR);          // fixed, friendly daylight: no day/night cycle
   setClock(G.S.t);                                      // resume every gameplay timer where it stopped
+  {  // saves damaged by the old bug (S.t saved as 0 while timers kept their stamps): never let the clock sit behind a stamp
+    const st = [G.S.market && G.S.market.at];
+    for (const i of G.S.items) { if (i.cook) st.push(i.cook.s); if (i.brew) st.push(i.brew.s); if (i.stock) st.push(i.stock.at); }
+    const mx = Math.max(0, ...st.filter(x => Number.isFinite(x) && x > 0 && x < 1e11));
+    if (mx > nowFn()) setClock(mx);
+  }
   catchUp(G.S, G.away || 0);                            // ...except stoves, which kept going while closed
   G.world = makeWorld(G.S, true);
   G.beforeSave = () => { if (G.world && G.world.own) G.S.guests = SIM.snapshotGuests(G.world); };

@@ -20,7 +20,9 @@ if (typeof document !== 'undefined') document.addEventListener('visibilitychange
 });
 export function takeAway() { const a = away; away = 0; return a; }   // ms spent away since the last call
 export function advanceClock(ms) { gameMs += Math.max(0, ms); }   // debug/testing hook only
-export function setClock(ms) { gameMs = Number.isFinite(ms) && ms > 0 ? ms : 0; lastReal = Date.now(); }
+let clockSet = false;
+export const isClockSet = () => clockSet;   // false until the saved game time was restored: saving before that would write 0
+export function setClock(ms) { gameMs = Number.isFinite(ms) && ms > 0 ? ms : 0; lastReal = Date.now(); clockSet = true; }
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const pick = a => a[Math.floor(Math.random() * a.length)];
 export const uid = () => Math.random().toString(36).slice(2, 10);

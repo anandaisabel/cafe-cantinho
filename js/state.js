@@ -1,6 +1,6 @@
 // Game state, derived values and persistence (device + account)
 import { RECIPES, brewYield, START_SIZE, START_COINS, ITEMS, xpForLevel, GOALS, gemsForLevel, isWallItem, canHoldWall, energyMax, ENERGY_REGEN_S, MASTERY_AT, MASTERY_BONUS } from './config.js';
-import { now, wall, setClock, uid, emit } from './util.js';
+import { now, wall, setClock, isClockSet, uid, emit } from './util.js';
 import { DIRS, doorY } from './path.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 import { connectFirebase } from './net-firebase.js';
@@ -185,7 +185,7 @@ let claimed = false;
 export async function flush(force) {
   if ((!dirty && !force && !remoteDirty) || !G.S) return;
   if (dirty || force) {
-    dirty = false; G.S.lastSeen = wall(); G.S.t = now();
+    dirty = false; G.S.lastSeen = wall(); if (isClockSet()) G.S.t = now();
     if (G.beforeSave) try { G.beforeSave(); } catch (e) { }   // seated guests go into the save
     try { localStorage.setItem(localKey, JSON.stringify(G.S)); } catch (e) { }
     remoteDirty = true;

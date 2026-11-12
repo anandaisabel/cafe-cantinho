@@ -63,6 +63,9 @@ Estas regras valem para toda tarefa neste repositório.
   adiciona o remetente em `S.friends` e apaga o aviso (`S.fsent` evita repetir).
 - **Variedade de bonecos**: `addAccessories` (chars3d.js) põe boina, gorro, boné, chapéu de palha, flor, laço, fone, coroa,
   óculos, cachecol, gravata-borboleta e mochila nos clientes (`look.acc`, `look.accent`, `look.mustache`); VIPs não.
+- **Relógio do jogo nunca é salvo antes de restaurado** (`isClockSet()` em util.js): o `flush(true)` dentro de `load()`
+  gravava `S.t = 0` e todo F5 zerava feira, pratos e validade (relógio de jogo recomeçava em 0). `main.js` também
+  conserta saves já danificados: o relógio nunca fica atrás de um carimbo (`cook.s`, `brew.s`, `stock.at`, `market.at`).
 - **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
   (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
   (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`
