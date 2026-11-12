@@ -2,7 +2,7 @@
 // Poses come from the pack's own animation clips, blended by weight; a few bones get small overrides
 // (carrying a tray, eating, reading the menu, head tilts) so the café actions read clearly.
 import { THREE } from './engine.js';
-import { cyl, box, sphere, shadowBlob } from './kit.js';
+import { cyl, box, sphere, shadowBlob, SHARED } from './kit.js';
 import { radialTexture } from './textures.js';
 import { food3d } from './food3d.js';
 import { charModel, CHAR_CLIPS, CHAR_POSE, CHAR_COUNT, heroModel, HERO_CLIPS } from './assets.js';
@@ -16,6 +16,19 @@ const Q = new THREE.Quaternion(), EU = new THREE.Euler(), OVERRIDE = ['head', 'a
 const HERO_MAP = { idle: 'Idle', walk: 'Walking_A', sit: 'Sit_Chair_Idle', 'interact-right': 'Interact', 'emote-yes': 'Cheer', 'emote-no': 'Idle' };
 const HERO_K = .38;   // KayKit units -> Kenney character units (tuned by eye against chairs and staff)
 
+// Staff wear a white uniform: the body mesh (clothes, arms, legs) is washed almost white, keeping a faint hint
+// of the original shading; the head (face, hair) is untouched. One shared material per source material.
+const uniformMats = new Map();
+function uniformMaterial(src) {
+  let m = uniformMats.get(src);
+  if (!m) {
+    m = src.clone(); m.roughness = .75;
+    m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.97, .96, .93), .84);'); };
+    m.customProgramCacheKey = () => 'staffUniform';
+    SHARED.add(m); uniformMats.set(src, m);
+  }
+  return m;
+}
 export function buildChar(look, role) {
   const L = look;
   const root = new THREE.Group(), rig = new THREE.Group(); root.add(rig); rig.scale.setScalar(bodyScale(L) * CHAR_SCALE);
@@ -25,6 +38,7 @@ export function buildChar(look, role) {
   const model = hero ? heroModel(L.hero) : charModel(modelOf(L));
   if (hero) { const hw = new THREE.Group(); hw.scale.setScalar(HERO_K); hw.add(model); rig.add(hw); } else rig.add(model);
   const bones = {}; model.traverse(o => { if (o.isBone) bones[o.name] = o; });
+  if (!hero && (role === 'waiter' || role === 'chef' || role === 'owner')) model.traverse(o => { if (o.isMesh && /body/.test(o.name)) o.material = uniformMaterial(o.material); });
   const mixer = new THREE.AnimationMixer(model), acts = {}, w = {};
   for (const n of CLIPS) { const a = acts[n] = mixer.clipAction(hero ? HERO_CLIPS[HERO_MAP[n]] : CHAR_CLIPS[n]); w[n] = n === 'idle' ? 1 : 0; a.setEffectiveWeight(w[n]); a.play(); }
   mixer.update(0);

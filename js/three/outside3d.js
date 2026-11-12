@@ -308,7 +308,7 @@ function buildMarket(g, n, sz) {
   // no sign: the stall says what it is with its produce
   // the vendor, standing behind the stall
   const look = { body: 'adult', model: 7 };
-  const V = buildChar(look, 'waiter');
+  const V = buildChar(look, 'cust');   // the vendor is not café staff: own clothes, no uniform or apron
   // the vendor stands out front beside the crates, facing the street, so you can see them
   V.root.position.set(1.3, 0, .6); V.root.rotation.y = -.3; m.add(V.root);
   vendor = V;

@@ -31,7 +31,7 @@ Estas regras valem para toda tarefa neste repositório.
 - **Bebidas não vão para o balcão.** O jogador serve tocando no balão de copo sobre o cliente (`serveDrink`),
   pagando só o custo em moedas. Cada bebida tem um bônus (`DRINK_BONUS`: moedas, XP ou satisfação).
   O garçom não busca mais bebidas. **Energia de volta** (pedido): bebida custa 1–3 (`drinkEnergy`), "Acelerar"
-  no painel do fogão termina o prato por 1 de energia por minuto restante (`speedUpCost`); recarga 1 a cada 90 s,
+  no painel do fogão termina o prato por 1 de energia por minuto restante (`speedUpCost`); recarga 1 por minuto,
   máximo 20 + 2/nível até 50. O balão de bebida não balança.
 - **Sem carinha fixa sobre o cliente.** A expressão aparece só em momentos marcantes.
 - **Sem ruído de fundo contínuo.** O 'room tone' de ruído grave soava como trânsito; foi trocado pelo rádio lo-fi.
@@ -42,6 +42,8 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
+- **Equipe de uniforme branco**: corpo dos bonecos de chef/garçom/dono clareado por shader (`uniformMaterial`),
+  cabeça intacta. O vendedor da feira não é equipe (`buildChar(look, 'cust')`).
 - **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. VIPs KayKit sentam com a raiz quase no chão (`seatY - .26`):
   o clipe `Sit_Chair_Idle` já ergue o quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
 - **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);

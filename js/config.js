@@ -123,7 +123,7 @@ export const DRINKS = () => RECIPES.filter(r => r.drink);
 export const DRINK_BONUS = { espresso: 'coins', cappuccino: 'xp', chai: 'coins', suco: 'rep', vitamina: 'xp', moccaccino: 'xp', affogato: 'rep', chocquente: 'coins', matchalatte: 'rep' };
 export const BONUS_TXT = { coins: 'mais moedas', xp: 'XP em dobro', rep: 'cliente mais feliz' };
 export const drinkEnergy = R => R.lv >= 15 ? 3 : R.lv >= 6 ? 2 : 1;   // energy to serve a drink by tapping the guest
-export const ENERGY_REGEN_S = 90;                       // one point every 90 s of play
+export const ENERGY_REGEN_S = 60;                       // one point every minute of play
 export const energyMax = lv => Math.min(50, 20 + lv * 2);
 // speeding a dish up: one energy per minute it still had to cook (at least 1)
 export const speedUpCost = secsLeft => Math.max(1, Math.ceil(secsLeft / 60));
