@@ -193,7 +193,7 @@ export function buildOutside(st) {
     const lampP = model('c_streetlight', CITY * .8); lampP.position.set(px1 - 1.2, GY, pz1 - .2); g.add(lampP); bulb(g, px1 - 1.6, GY + 1.55, pz1 - .2, .06); lightPool(g, px1 - 1.6, pz1 - .2, 1.2);
   }
   // right lawn and behind the café
-  for (const [x, z, s] of [[n + 1.9, -2.3, 1.2], [n + 2.4, n * .5 + .6, 1.1], [L.XR - T * .5 - 1.2, -2.4, 1.25], [L.XR - T * .5 - 1.4, n - .6, 1.0], [-2.4, -2.2, 1.15], [n * .35, -2.6, 1.05], [n * .75, -3.3, 1.2]]) veg.tree(x, z, s);
+  for (const [x, z, s] of [[n + 1.9, -2.3, 1.2], [n + 4.2, n * .5 + 2.6, 1.1], [L.XR - T * .5 - 1.2, -2.4, 1.25], [L.XR - T * .5 - 1.4, n - .6, 1.0], [-2.4, -2.2, 1.15], [n * .35, -2.6, 1.05], [n * .75, -3.3, 1.2]]) veg.tree(x, z, s);
   for (const [x, z] of [[n + 4.6, -2.8], [L.XR - T * .5 - 1, 2.6], [-3.6, -3.4], [n * .5, -3.9]]) veg.pine(x, z, 1.1);
   veg.bed(n + 3.4, n - .2, 1.2, .5, 12);
   { const b = model('c_bench', CITY); b.position.set(n + 3.6, GY, n / 2 - .8); b.rotation.y = -Math.PI / 2; g.add(b); }
@@ -309,7 +309,7 @@ function buildMarket(g, n, sz) {
   const look = { body: 'adult', model: 7 };
   const V = buildChar(look, 'waiter');
   // the vendor stands out front beside the crates, facing the street, so you can see them
-  V.root.position.set(-1.35, 0, .55); V.root.rotation.y = .35; m.add(V.root);
+  V.root.position.set(1.3, 0, .6); V.root.rotation.y = -.3; m.add(V.root);
   vendor = V;
   // produce crates out front, tilted toward the street so the goods read from far away
   const CRATES = [['#f08a24', .055], ['#d8343f', .04], ['#8cc152', .05], ['#9b7ad8', .036], ['#9a6a3c', .04]];
@@ -335,8 +335,8 @@ let vendor = null;
 export function tickVendor(t, dt) {
   if (!vendor) return;
   // a gentle idle so the stall feels staffed
-  animateChar(vendor, { gx: -1.35, gy: .55, sitting: false, moving: false, seed: 3, state: 'idle', alpha: 1, look: vendor.look, role: 'waiter' }, t, dt);
-  vendor.root.position.set(-1.35, 0, .55); vendor.root.rotation.y = .35;
+  animateChar(vendor, { gx: 1.3, gy: .6, sitting: false, moving: false, seed: 3, state: 'idle', alpha: 1, look: vendor.look, role: 'waiter' }, t, dt);
+  vendor.root.position.set(1.3, 0, .6); vendor.root.rotation.y = -.3;
 }
 // ---------- pedestrians (decorative, no interaction) ----------
 const walkers = [];

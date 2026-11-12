@@ -30,8 +30,9 @@ Estas regras valem para toda tarefa neste repositório.
 - **O jogador não recolhe prato à mão.** O chef retira sozinho quando há balcão livre.
 - **Bebidas não vão para o balcão.** O jogador serve tocando no balão de copo sobre o cliente (`serveDrink`),
   pagando só o custo em moedas. Cada bebida tem um bônus (`DRINK_BONUS`: moedas, XP ou satisfação).
-  O garçom não busca mais bebidas. **Sem energia**: ela foi testada e removida a pedido (o código de
-  `energy()` em `state.js` ficou, sem uso). O balão de bebida não balança.
+  O garçom não busca mais bebidas. **Energia de volta** (pedido): bebida custa 1–3 (`drinkEnergy`), "Acelerar"
+  no painel do fogão termina o prato por 1 de energia por minuto restante (`speedUpCost`); recarga 1 a cada 90 s,
+  máximo 20 + 2/nível até 50. O balão de bebida não balança.
 - **Sem carinha fixa sobre o cliente.** A expressão aparece só em momentos marcantes.
 - **Sem ruído de fundo contínuo.** O 'room tone' de ruído grave soava como trânsito; foi trocado pelo rádio lo-fi.
 - **Sem carros e sem asfalto.** A volta da quadra é um calçadão claro (`promenade()` em `outside3d.js`);
@@ -41,7 +42,7 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
-- **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.7×.
+- **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
 - **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);
   chance de 3% a 9% por cliente a partir do nível 3. Vendedor da feira fica na frente da barraca.
 - **Um cliente por cadeira** (`freeSeats`): mesas recebem vários clientes; mesa suja não recebe novos até ser limpa.
@@ -51,11 +52,10 @@ Estas regras valem para toda tarefa neste repositório.
   dele. Ingredientes sem receita não são vendidos. **Café novo começa sem cafeteira** (custa 260 na loja).
 - **Etiquetas dos equipamentos**: fogão parado mostra "Cozinhar"; máquina de bebida mostra "Pronta" ou "Pedido!".
 - **`?offline`** no endereço ignora o Firebase: use para testar sem gravar cafés de teste no banco real.
-- **Sons gravados de verdade** (Wikimedia Commons, CC0/domínio público; `assets/sfx/`, licenças em
-  `assets/licenses/wikimedia-commons-sounds.txt`): sininhos de porta (`doorbell`, entrada e saída), talheres
-  (`cutlery_0..3`), prato (`plate`) e um ambiente de restaurante em loop (`ambience.m4a`, AAC) que fica mudo com o
-  café vazio e sobe conforme enche. Os sons de impacto da Kenney acelerados soavam como "batendo prego": removidos.
-  Conversão: o navegador decodifica e recorta, `afconvert` gera o AAC.
+- **Sons fofinhos sintetizados** (pedido explícito, depois de testar gravações reais): sino "plim-plom" de caixinha
+  de música, prato = bolhinha "pop", talheres/copos = "plinc" baixinho e raro (`soft()` em audio.js). Gravações de
+  ambiente e impactos foram rejeitadas (alto, desagradável, "prego"). `assets/sfx/` fica vazio; `sample()` continua
+  disponível. Música sem bumbo e com baixo uma oitava acima (o "turom-turom" grave incomodava).
 - **Comida dura mais**: balcão 5× (mín. 20 min), fogão espera 3× antes de queimar (mín. 3 min) em `config.js`.
 - **Jukebox**: um toque troca para a próxima música (`nextTrack`); volumes das músicas igualados por medição.
 - **Nomes de classe CSS**: `.chip` e `.track` são da tela de progressão; HUD usa `.hchip`, músicas usam `.song`.

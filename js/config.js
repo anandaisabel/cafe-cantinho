@@ -122,9 +122,11 @@ export const DRINKS = () => RECIPES.filter(r => r.drink);
 //   coins: pays 60% more · xp: double XP · rep: the guest leaves happier (satisfaction and reputation)
 export const DRINK_BONUS = { espresso: 'coins', cappuccino: 'xp', chai: 'coins', suco: 'rep', vitamina: 'xp', moccaccino: 'xp', affogato: 'rep', chocquente: 'coins', matchalatte: 'rep' };
 export const BONUS_TXT = { coins: 'mais moedas', xp: 'XP em dobro', rep: 'cliente mais feliz' };
-export const drinkEnergy = R => Math.min(6, 2 + Math.floor(R.lv / 5));
-export const ENERGY_REGEN_S = 30;                       // one point every 30 s of play
-export const energyMax = lv => 30 + Math.min(30, lv * 2);
+export const drinkEnergy = R => R.lv >= 15 ? 3 : R.lv >= 6 ? 2 : 1;   // energy to serve a drink by tapping the guest
+export const ENERGY_REGEN_S = 90;                       // one point every 90 s of play
+export const energyMax = lv => Math.min(50, 20 + lv * 2);
+// speeding a dish up: one energy per minute it still had to cook (at least 1)
+export const speedUpCost = secsLeft => Math.max(1, Math.ceil(secsLeft / 60));
 // wall openings sit on a wall, not on a floor tile
 export const isWallItem = it => it && ITEMS[it.type] && (ITEMS[it.type].kind === 'window' || ITEMS[it.type].kind === 'door');
 export const wallOf = (st, it) => (it.x === 0 ? 'z' : it.y === 0 ? 'x' : null);   // which wall a cell touches

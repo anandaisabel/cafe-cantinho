@@ -547,8 +547,8 @@ export function updateTableFood(entry, foods, dirty) {
       const m = food3d(f.r); const D = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.dir];
       // table group is rotated; place in world-aligned offset by undoing its yaw
       const v = new THREE.Vector3(D[0] * .12, entry.topY, D[1] * .12).applyAxisAngle(new THREE.Vector3(0, 1, 0), -entry.group.rotation.y);
-      m.position.copy(v); m.scale.setScalar(2.7); entry.group.add(m); entry.tfoods.push(m); m.userData.f = f;
+      m.position.copy(v); m.scale.setScalar(2.0); entry.group.add(m); entry.tfoods.push(m); m.userData.f = f;
     }
   }
-  for (const m of entry.tfoods || []) { const f = m.userData.f; if (f.dirty) continue; m.scale.setScalar(2.7 * (1 - (f.eaten || 0) * .35)); }
+  for (const m of entry.tfoods || []) { const f = m.userData.f; if (f.dirty) continue; m.scale.setScalar(2.0 * (1 - (f.eaten || 0) * .35)); }
 }

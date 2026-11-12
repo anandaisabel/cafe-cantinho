@@ -1,7 +1,7 @@
 // HUD, menus and panels
-import { spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
+import { speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
 import { cafeQuality, qualityLabel } from './events.js';
-import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, POP_MAX } from './state.js';
+import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, spendEnergy, POP_MAX } from './state.js';
 import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink } from './sim.js';
 import { esc, fmtTime, pick, uid, today, on, now } from './util.js';
 import { thumbItem, thumbFood, thumbChar } from './three/thumbs.js';
@@ -18,6 +18,7 @@ const $ = id => document.getElementById(id);
 // ---------------- SVG icons (illustrated, no emoji) ----------------
 // kawaii icon set: soft brown outline, flat pastel fills, rounded joins, a white shine; faces on the friendly ones
 export const ICON = {
+  bolt: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.6" fill="#ffc98a" stroke="#8a6248" stroke-width="1.4"/><path d="M13.4 4.8 8 13h3.6l-1.2 6.2L16 11h-3.8z" fill="#fff3c4" stroke="#8a6248" stroke-width="1.3"/><ellipse cx="8.2" cy="7.4" rx="1.6" ry=".9" fill="#fff" opacity=".8" transform="rotate(-30 8.2 7.4)"/></svg>`,
   coin: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12.8" r="9.4" fill="#e9b04a" stroke="#8a6248" stroke-width="1.4"/><circle cx="12" cy="11.6" r="9.4" fill="#ffd56b" stroke="#8a6248" stroke-width="1.4"/><circle cx="12" cy="11.6" r="6.6" fill="#ffe59a" stroke="#e9b04a" stroke-width="1.1"/><circle cx="9.91" cy="11.40" r="0.71" fill="#8a6248"/><circle cx="14.09" cy="11.40" r="0.71" fill="#8a6248"/><path d="M11.05 12.63q0.95 0.85 1.90 0" stroke="#8a6248" stroke-width="1.04"/><ellipse cx="8.58" cy="12.73" rx="1.04" ry="0.66" fill="#f49ba8" opacity=".85"/><ellipse cx="15.42" cy="12.73" rx="1.04" ry="0.66" fill="#f49ba8" opacity=".85"/><ellipse cx="7.6" cy="6.8" rx="1.82" ry="1.04" fill="#fff" opacity=".85" transform="rotate(-30 7.6 6.8)"/></svg>`,
   gem: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 4h11.6l4 5.2L12 21 2.2 9.2z" fill="#9ee0cc" stroke="#8a6248" stroke-width="1.4"/><path d="M6.2 4 2.2 9.2h19.6L17.8 4z" fill="#c9f2e5" stroke="#8a6248" stroke-width="1.4"/><path d="M8.4 9.2 12 4l3.6 5.2" stroke="#8a6248" stroke-width="1.1"/><circle cx="10.35" cy="13.20" r="0.56" fill="#8a6248"/><circle cx="13.65" cy="13.20" r="0.56" fill="#8a6248"/><path d="M11.25 14.17q0.75 0.68 1.50 0" stroke="#8a6248" stroke-width="0.83"/><ellipse cx="9.30" cy="14.25" rx="0.83" ry="0.52" fill="#f49ba8" opacity=".85"/><ellipse cx="14.70" cy="14.25" rx="0.83" ry="0.52" fill="#f49ba8" opacity=".85"/><ellipse cx="7.4" cy="6.4" rx="1.40" ry="0.80" fill="#fff" opacity=".85" transform="rotate(-30 7.4 6.4)"/></svg>`,
   star: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 3.00 L14.70 8.88 L21.13 9.63 L16.37 14.02 L17.64 20.37 L12.00 17.20 L6.36 20.37 L7.63 14.02 L2.87 9.63 L9.30 8.88Z" fill="#cbb6f2" stroke="#8a6248" stroke-width="1.4" stroke-width="1.6"/><ellipse cx="9" cy="8.4" rx="1.68" ry="0.96" fill="#fff" opacity=".85" transform="rotate(-30 9 8.4)"/></svg>`,
@@ -60,6 +61,7 @@ export function refreshHUD() {
   $('xpTxt').textContent = `${S.xp - lo}/${hi - lo}`;
   $('coinTxt').textContent = S.coins.toLocaleString('pt-BR');
   $('gemTxt').textContent = (S.gems || 0).toLocaleString('pt-BR');
+  refreshEnergy();
   refreshPop();
   $('cafeTitle').textContent = st.name;
   const cl = claimable(S); $('goalBadge').textContent = cl; $('goalBadge').style.display = cl ? 'flex' : 'none';
@@ -80,6 +82,7 @@ on('servedrink', id => {
   const r = serveDrink(G.world, c);
   if (r === 'ok') { const R = recipe(c.drink), b = DRINK_BONUS[R.id] || 'coins'; toast(`${R.n} servido · ${BONUS_TXT[b]}`); refreshHUD(); return; }
   sfx('bad');
+  if (r === 'energy') { const e = energy(); toast(`Sem energia (${e.v}/${e.max}). Volta 1 a cada 90 s · próxima em ${e.next}s`); bumpEnergy(); return; }
   toast(r === 'nomachine' ? 'Compre a máquina dessa bebida na loja' : r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não dá para servir agora');
 });
 // popularity meter: a face that cheers up as the café gets famous, plus the number (0–105)
@@ -359,7 +362,14 @@ export function openEquip(it) {
       upd();
       const acts = h('div', 'acts');
       const b = h('button', 'btn ghost', 'Descartar'); b.onclick = () => { it.cook = null; it.last = null; save(); closePanel(); };
-      const ok = h('button', 'btn', 'Ok'); ok.onclick = closePanel; acts.append(b, ok); body.appendChild(acts);
+      // spend energy to finish now (1 per minute left)
+      const cost = speedUpCost(left), fast = h('button', 'btn rose', `Acelerar · ${cost} de energia`);
+      fast.onclick = () => {
+        const l2 = R.t - (now() - it.cook.s) / 1000, c2 = speedUpCost(l2);
+        if (!spendEnergy(c2)) { const e = energy(); toast(`Falta energia (${e.v}/${e.max}). Volta 1 a cada 90 s`); bumpEnergy(); return; }
+        it.cook.s = now() - R.t * 1000; save(); sfx('ding'); closePanel(); toast(`${R.n} ficou pronto na hora!`); refreshHUD();
+      };
+      const ok = h('button', 'btn', 'Ok'); ok.onclick = closePanel; acts.append(b, fast, ok); body.appendChild(acts);
     }, { small: true });
     return;
   }

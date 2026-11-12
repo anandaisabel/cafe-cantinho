@@ -27,6 +27,7 @@ function wire() {
   document.getElementById('lvlStar').innerHTML = UI.ICON.star;
   document.getElementById('coinIc').innerHTML = UI.ICON.coin;
   document.getElementById('gemIc').innerHTML = UI.ICON.gem;
+  document.getElementById('energyIc').innerHTML = UI.ICON.bolt;
   document.getElementById('vTip').insertAdjacentHTML('afterbegin', `<span class="bi">${UI.ICON.coin}</span>`);
   bind('bLvl', UI.openProgress);
   bind('bOpen', UI.toggleOpen);
@@ -65,7 +66,7 @@ function loop(t) {
     syncView(G.world, t, dt);
     pumpThumbs();          // before the main render: draws in a corner that the render then overwrites
     render();
-    hudT += dt; if (hudT > .5) { hudT = 0; UI.refreshOrders(); UI.refreshPop(); }
+    hudT += dt; if (hudT > .5) { hudT = 0; UI.refreshOrders(); UI.refreshEnergy(); UI.refreshPop(); }
     // room tone follows how busy the café actually is
     ambT += dt;
     if (ambT > .4) { ambT = 0; const n = G.world.custs.filter(c => c.state !== 'leave').length; UI.setAmbience(Math.min(1, n / 5) * (G.S.open === false ? .25 : 1)); }

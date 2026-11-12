@@ -320,9 +320,11 @@ export function serveDrink(w, c) {
   const R = recipe(c.drink), mach = drinkMachine(w.st, c.drink);
   if (!mach) return 'nomachine';
   if (w.own) {
+    const need = drinkEnergy(R);
+    if (energy().v < need) return 'energy';
     if (G.S.coins < R.cost) return 'coins';
     if (!hasIngredients(R)) return 'ingredient';
-    addCoins(-R.cost);
+    spendEnergy(need); addCoins(-R.cost);
     if (R.need) addSpice(R.need.id, -(R.need.n || 1));
   }
   mach.pour = now(); mach.drinkR = c.drink;

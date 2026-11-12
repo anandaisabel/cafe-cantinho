@@ -88,6 +88,8 @@ function noise(dur, type, freq, q, v, when = 0, sweep = 0, at = null, to = null)
   g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
   src.connect(f).connect(g).connect(to || out()); src.start(t0, Math.random() * 1.5); src.stop(t0 + dur + .02);
 }
+// a cute, soft note: rounded attack, sine + faint octave (music box / marimba feel)
+function soft(f, d, v, when = 0) { tone(f, d, 'sine', v, when); tone(f * 2, d * .6, 'sine', v * .18, when); tone(f * .5, d * .5, 'triangle', v * .12, when); }
 function tone(f, d, type = 'sine', v = .12, when = 0, slide = 0, at = null, to = null) {
   const a = ctx(); if (!a) return;
   const t0 = at !== null ? at : a.currentTime + when, o = a.createOscillator(), g = a.createGain();
@@ -103,19 +105,19 @@ const SFX = {
   cook: () => tone(300, .15, 'triangle', .08, 0, 1.4),
   level: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .08, i * .1)),
   bad: () => tone(300, .25, 'sawtooth', .04, 0, .6),
-  // door: the little cluster of bells on a shop door, jingling as it swings (recorded)
+  // door: a little music-box "plim-plom", two soft notes going up
   bell: () => {
     if (!AUDIO.bell) return;
-    if (!sample('doorbell', { rate: 1, vol: .5, jitter: .05 })) tone(2350, .5, 'sine', .03);
+    soft(784, .55, .07); soft(1175, .7, .06, .16);
   },
   bellOut: () => SFX.bell(),           // same bell on the way out, rate-limited separately from arrivals
   chew: () => { },                     // synthesized chewing sounded artificial: left silent
-  // a cup set down: a soft recorded cutlery touch
-  clink: () => { sample('cutlery_', { rate: 1.05, vol: .18 }); },
-  // fork and knife on a plate (recorded)
-  cutlery: () => { sample('cutlery_', { rate: 1, vol: .3 }); },
-  // a plate set down on the table (recorded)
-  plate: () => { sample('plate', { rate: 1, vol: .42 }); },
+  // a cup set down: a tiny bright plink
+  clink: () => { soft(1568 + Math.random() * 300, .18, .025); },
+  // fork on a plate: a very soft plink
+  cutlery: () => { soft(1320 + Math.random() * 400, .15, .02); },
+  // a plate set down: a round little bubble pop
+  plate: () => { tone(520, .12, 'sine', .06, 0, 1.6); soft(1046, .2, .025, .05); },
   sizzle: () => { noise(.9, 'highpass', 1800, .7, .035); },
   steam: () => { noise(.7, 'bandpass', 2400, 1.2, .05, .5); },
   grind: () => { noise(.55, 'lowpass', 700, 1.5, .05, 1.4); tone(120, .5, 'sawtooth', .025, 0, 1.2); },
@@ -137,17 +139,13 @@ function startBed() {
   bedGain = ac.createGain(); bedGain.gain.value = 0;
   bed.connect(bedGain).connect(ambBus); bed.start();
 }
-export function setAmbience(level) {
-  busy = Math.max(0, Math.min(1, level || 0));
-  startBed();
-  if (bedGain) bedGain.gain.setTargetAtTime(busy > .01 ? .12 + busy * .55 : 0, ac.currentTime, 1.2);
-}
+export function setAmbience(level) { busy = Math.max(0, Math.min(1, level || 0)); }   // the recorded room tone was too loud: gone
 export function tickAmbience(nowMs) {
   if (!ac || AUDIO.amb < .01) return;
   const eating = G.world && !G.visiting ? G.world.custs.filter(c => c.state === 'eat').length : 0;
   if (eating && nowMs >= nextDine) {
     dest = ambBus; try { SFX.cutlery(); } catch (e) { } dest = null;
-    nextDine = nowMs + (4000 + Math.random() * 5000) / Math.min(2, Math.sqrt(eating));
+    nextDine = nowMs + (6000 + Math.random() * 7000) / Math.min(2, Math.sqrt(eating));
   }
 }
 // Some sounds can fire several times at once (a queue of guests at the door).
@@ -230,7 +228,7 @@ function schedule() {
   const T = TRACKS[AUDIO.track] || TRACKS[0], sd = 60 / T.bpm / 4;
   while (mus.next < a.currentTime + .35) {
     const s = mus.step, t = mus.next + (s % 2 ? sd * .28 : 0), [root, chord] = T.chords[mus.bar % 4], L = mus.lp;
-    const V = T.voice || 'epiano', gr = T.groove || 'lofi', bass = (m, d, v = .14) => tone(m2f(m), d, 'sine', v, 0, 0, t, L);
+    const V = T.voice || 'epiano', gr = T.groove || 'lofi', bass = (m, d, v = .14) => tone(m2f(m + 12), d, 'triangle', v * .45, 0, 0, t, L);   // an octave up and soft: no rumble
     if (gr === 'bossa') {
       // syncopated guitar comping and a bossa bass (root, fifth)
       if ([0, 3, 6, 10, 12].includes(s)) chord.forEach((m, i) => voice('guitar', m, t + i * .01, sd * 2, .03));
@@ -242,7 +240,7 @@ function schedule() {
       else if (gr !== 'none') { if (s === 0) bass(root - 12, sd * 7, .16); if (s === 6 || (s === 11 && Math.random() < .4)) bass(root - 12 + (Math.random() < .5 ? 7 : 0), sd * 3, .13); }
       else if (s === 0) bass(root - 12, sd * 12, .13);
       if (s === 10 && V !== 'musicbox' && Math.random() < .5) chord.slice(1).forEach(m => voice(V, m, t, sd * 4, .03));
-      if (gr === 'lofi') { if (s === 0 || s === 10 || (s === 7 && Math.random() < .3)) tone(90, .3, 'sine', .22, 0, .5, t, L); if (s === 4 || s === 12) tone(330, .07, 'sine', .05, 0, .8, t, L); }
+      if (gr === 'lofi' && (s === 4 || s === 12)) tone(660, .05, 'sine', .03, 0, .8, t, L);   // just a light tick: the kick drum read as a low thump
       if (gr === 'jazz' && (s === 4 || s === 12)) tone(520, .05, 'sine', .035, 0, .8, t, L);                // soft rim on 2 and 4
     }
     // melody: a few notes from the scale in the track's own voice

@@ -235,7 +235,7 @@ function updateOverlays(w, t) {
     const want = c.drink && !c.drinkDone && (c.state === 'wait' || c.state === 'eat') && c.sitting && !G.visiting && G.mode !== 'edit';   // hidden while paused in decoration mode
     if (!want) { if (C.dom3) { C.dom3.remove(); C.dom3 = null; } continue; }
     if (!C.dom3) {
-      C.dom3 = el('ov drinkb', `<div class="dbub"><div class="dglass">${img(c.drink)}</div></div>`); fillSlots(C.dom3);
+      C.dom3 = el('ov drinkb', `<div class="dbub"><div class="dglass">${img(c.drink)}</div><b class="dcost">⚡${drinkEnergy(recipe(c.drink))}</b></div>`); fillSlots(C.dom3);
       // serve on touch-down: a click needs press and release on the same spot, which a moving bubble can miss
       const id = c.id; C.dom3.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); emit('servedrink', id); });
     }
