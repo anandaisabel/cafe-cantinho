@@ -33,7 +33,7 @@ function wire() {
   bind('bOpen', UI.toggleOpen);
   bind('bShop', () => UI.openShop());
   bind('popChip', () => UI.toast(`😊 Fama ${(G.S.pop || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} · clientes felizes trazem mais clientes!`));
-  bind('energyChip', () => { const e = UI.energyNow(); UI.toast(e.next ? `⚡ Energia ${e.v}/${e.max} · +1 em ${e.next}s` : `⚡ Energia cheia!`); });
+  bind('energyChip', () => UI.toast('⚡ A energia serve cafés e sucos e acelera pratos no fogo'));
   bind('bEdit', () => { G.mode = 'edit'; G.placeFrom = null; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; });
   bind('bDone', () => { if (G.pending) UI.cancelPlace(); G.mode = 'play'; G.sel = null; G.drag = null; layoutChanged(G.world); UI.refreshHUD(); UI.updateToolbar(); });
   bind('bEditShop', () => UI.openShop());

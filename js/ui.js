@@ -108,7 +108,9 @@ export function refreshEnergy() {
   if (!$('energyTxt') || !G.S) return;
   const e = energy(G.S), txt = `${e.v}/${e.max}`;
   if ($('energyTxt').textContent !== txt) { $('energyTxt').textContent = txt; $('energyFill').style.width = Math.round(e.v / e.max * 100) + '%'; }
-  $('energyChip').title = e.next ? `Energia para servir bebidas · +1 em ${e.next}s` : 'Energia cheia';
+  $('energyChip').title = 'Energia: serve cafés e sucos e acelera pratos no fogo';
+  // a small countdown under the chip while it refills
+  const sub = $('energySub'); if (sub) { const t = e.next ? `+1 em ${Math.floor(e.next / 60)}:${String(e.next % 60).padStart(2, '0')}` : ''; if (sub.textContent !== t) { sub.textContent = t; sub.style.display = t ? '' : 'none'; } }
 }
 function bumpEnergy() { const el = $('energyChip'); if (!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 on('drinkfail', r => toast(r === 'nomachine' ? 'Compre a máquina dessa bebida na loja' : r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não dá para servir agora'));

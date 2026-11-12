@@ -485,3 +485,7 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 
 /* panel action buttons: wrap a long label instead of spilling outside the button */
 .acts .btn{white-space:normal;text-align:center;line-height:1.15;min-height:44px}
+
+/* small refill countdown under the energy chip */
+.c-energy{cursor:pointer}
+.hchip .csub{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:4px;padding:0 7px;border-radius:999px;background:var(--k-paper);border:1.5px solid var(--k-ink2);font:700 10px/14px Fredoka;color:var(--k-text);white-space:nowrap;z-index:3}
