@@ -15,6 +15,9 @@ import { thumbFood } from './thumbs.js';
 import { now, fmtTime, emit } from '../util.js';
 
 export const CHAIR_PULL = .42;
+// KayKit VIPs' sit clip puts the hips .21 behind the root (Kenney people: about level with it), so they are pulled
+// further toward the table; otherwise their hips end up in the chair's backrest (measured in the browser).
+const HERO_SIT_FWD = .17;
 const V = { items: new Map(), chars: new Map(), room: null, roomKey: '', worldRef: null, hover: null, grid: null, ghost: null, ghostKey: '', tile: null, fx: [] };
 export const VIEW = V;
 const layer = () => document.getElementById('overlay');
@@ -112,7 +115,7 @@ export function syncView(w, t, dt) {
     if (c.sitting && c.seat) { const ch = st.items.find(i => i.id === c.seat); if (ch) { o.seatYaw = rotYaw(ch.rot); o.seatY = .29; if (seatInfo(st, ch)) pull = [[0, 1], [1, 0], [0, -1], [-1, 0]][ch.rot || 0]; } }
     if (c._celebrate) { const p = (t - c._celebrate) / 900; if (p < 1) o.celebrate = p; else c._celebrate = 0; }
     animateChar(C, c, at, adt, o);
-    if (pull) { C.root.position.x += pull[0] * CHAIR_PULL; C.root.position.z += pull[1] * CHAIR_PULL; }
+    if (pull) { const d = CHAIR_PULL + (C.hero ? HERO_SIT_FWD : 0); C.root.position.x += pull[0] * d; C.root.position.z += pull[1] * d; }
   }
   for (const [id, C] of V.chars) if (!live.has(id)) { disposeTree(C.root); C.dom && C.dom.remove(); C.dom2 && C.dom2.remove(); C.dom3 && C.dom3.remove(); V.chars.delete(id); }
   assignLights(st);
