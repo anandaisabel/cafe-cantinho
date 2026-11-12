@@ -96,6 +96,10 @@ const BUILD = {
     for (let i = 0; i < 4; i++) sphere(g, .008, '#c8452f', -.045 + i * .03, y + .09, (i % 2 - .5) * .03);
     const leaf = sphere(g, .016, '#4f9a3c', .02, y + .094, 0); leaf.scale.set(.02, .006, .012);
   },
+  dirty(g) {   // stack of used plates a waiter carries to the sink
+    for (let i = 0; i < 3; i++) { const p = cyl(g, .1, .085, .014, '#f4ece2', (i % 2) * .01, i * .018, 0, { rough: .4 }, 18); }
+    for (const [x, z] of [[.03, .02], [-.025, -.01]]) sphere(g, .012, '#c9a97e', x, .05, z, { rough: .9 });
+  },
   // long recipes (hours to days)
   espaguete(g) {
     const y = plate(g);

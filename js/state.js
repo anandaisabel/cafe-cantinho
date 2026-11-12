@@ -26,13 +26,13 @@ export function freshState() {
     floor: 'wood', wall: 'peach', owned: { floor: ['wood'], wall: ['peach'] },
     items: [
       I('door_wood', 0, START_SIZE - 2), I('win_classic', 1, 0), I('win_classic', 0, 2), I('sconce', 3, 0), I('sconce', 0, 1),
-      I('counter', 2, 0), I('stove', 3, 0), I('stove', 4, 0),   // two stoves; no coffee machine at the start: it is bought in the shop
+      I('counter', 2, 0), I('stove', 3, 0), I('stove', 4, 0), I('sink', 5, 0),   // two stoves; no coffee machine at the start: it is bought in the shop
       I('table_round', 2, 2), I('chair_wood', 1, 2, 1), I('chair_wood', 3, 2, 3),
       I('table_round', 4, 4), I('chair_wood', 4, 3, 0), I('chair_wood', 5, 4, 3),
     ],
     inv: {},
     market: { at: -1e9, seed: 1, items: [] },
-    sconceMig: 1,
+    sconceMig: 1, sinkMig: 1,
     energy: { v: 30, t: 0 },
     mastery: {}, boost: { sal: 2, tomilho: 1 },
     pop: 10,
@@ -69,6 +69,21 @@ export function migrate(st) {
     { const want = Math.max(1, dy - 2); const c = near([want, want - 1, want + 1, want - 2].map(y => [0, y]).filter(([, y]) => y > 0)); if (c) st.items.push({ id: uid(), type: 'sconce', x: 0, y: c[1], rot: 0 }); }
   }
   if (!Number.isFinite(st.pop)) st.pop = Math.round(Math.min(60, 10 + (st.stats && st.stats.happy || 0) * .1) * 10) / 10;   // popularity, 0–105
+  // dirty dishes moved from tables to seats (§14), and washing needs a sink: older cafés get one for free
+  for (const i of st.items) if (i.dirty && ITEMS[i.type] && ITEMS[i.type].kind !== 'chair') delete i.dirty;
+  if (!st.sinkMig) {
+    st.sinkMig = 1;
+    if (!st.items.some(i => i.type === 'sink' || i.type === 'dishwasher') && !(st.inv && (st.inv.sink || st.inv.dishwasher))) {
+      const n = st.size, dy = (st.items.find(i => ITEMS[i.type] && ITEMS[i.type].kind === 'door') || { y: n - 2 }).y;
+      const free = (x, y) => x >= 0 && y >= 0 && x < n && y < n && !st.items.some(i => i.x === x && i.y === y && !isWallItem(i));
+      const ok = (x, y) => free(x, y) && !(x <= 1 && Math.abs(y - dy) <= 1) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => free(x + a, y + b));
+      let spot = null;
+      for (let x = n - 1; x >= 1 && !spot; x--) if (ok(x, 0)) spot = [x, 0];
+      for (let y = 1; y < n && !spot; y++) for (let x = 1; x < n && !spot; x++) if (ok(x, y)) spot = [x, y];
+      if (spot) st.items.push({ id: uid(), type: 'sink', x: spot[0], y: spot[1], rot: 0 });
+      else { st.inv = st.inv || {}; st.inv.sink = (st.inv.sink || 0) + 1; }
+    }
+  }
   if (!st.mastery || typeof st.mastery !== 'object') st.mastery = {};   // times each dish came off the stove
   if (!st.boost || typeof st.boost !== 'object') st.boost = { sal: 2, tomilho: 1 };   // spice shelf
   if (!Array.isArray(st.friends)) st.friends = [];   // neighbour codes added by hand (Firebase builds)
@@ -104,7 +119,9 @@ export function seatInfo(st, chair) {
   if (ITEMS[chair.type].kind !== 'chair') return null;
   const [dx, dy] = DIRS[chair.rot || 0];
   const t = itemAt(st, chair.x + dx, chair.y + dy);
-  return t && ITEMS[t.type].kind === 'table' ? t : null;
+  if (!t || ITEMS[t.type].kind !== 'table') return null;
+  // stools go with the high table, and only stools do (a normal chair at a bar table would sit far too low)
+  return (ITEMS[chair.type].needTop || null) === (ITEMS[t.type].topY ? t.type : null) ? t : null;
 }
 export const seats = st => st.items.filter(i => seatInfo(st, i));
 

@@ -75,7 +75,13 @@ Estas regras valem para toda tarefa neste repositório.
   de 'play', sai do modo construção (antes ficava pausado e parecia travado).
 - **Vendedor da feira passeia** em volta da barraca (`VENDOR_SPOTS`); a área de fora é estática
   (`matrixAutoUpdate = false`), então o vendedor é reativado depois, senão nunca se move.
-- **Um cliente por cadeira** (`freeSeats`): mesas recebem vários clientes; mesa suja não recebe novos até ser limpa.
+- **Um cliente por cadeira** (`freeSeats`). **Louça por assento** (fase 4): `chair.dirty` 1 = prato na mesa, 2 = garçom
+  levando; só aquele lugar fica bloqueado até lavar na pia (job `bus` em sim.js: mesa → pia → lava `ITEMS[pia].wash` ms).
+  Sem pia: lugares sujos esperam, mesa mostra "Falta pia" e um aviso sai uma vez (`w.noSink`). Saves antigos ganham uma
+  pia (`sinkMig`) e perdem o `dirty` das mesas. Pia (lv 1) e lava-louças (lv 8, 3× mais rápida).
+- **Móveis do salão**: `table_long` é uma peça 1×1 que emenda com a vizinha (duas = mesa de 6 lugares; não há item 2×1);
+  `booth` é cadeira-sofá (`pull` próprio, não entra na mesa); `stool` só serve na `table_high` (`needTop`/`topY`/`seatY`).
+- **Café fechado**: ninguém novo entra, garçons param, o chef continua cozinhando; abrir/fechar toca a campainha e mexe a porta.
 - **Modo decoração = modo construção** (estilo The Sims): simulação, bonecos, pedestres, vendedor e vento congelam,
   a cena fica azulada (`setBuildMode`, uniform `build` do passe VIBRANT) e a faixa `.buildbanner` avisa a pausa.
 - **Ingredientes por nível**: `spiceLevel(id)` = nível da primeira receita que usa; feira e loja só vendem a partir
@@ -221,7 +227,7 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 ## Referência de design
 
 `docs/documento-mestre.md`: especificação completa do jogo (recebida em 2026-11-12). `docs/plano-documento-mestre.md`:
-o que já existe, conflitos e fases (fases 1, 2 e 3 feitas).
+o que já existe, conflitos e fases (fases 1 a 4 feitas).
 
 `docs/referencia-cafe-mania.md`: como o Café Mania funcionava (pesquisa em blogs de fãs) e o que
 ainda falta trazer. Inspiração de mecânica apenas: nunca nome, arte ou textos.

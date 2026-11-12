@@ -188,7 +188,7 @@ export function openShop(tab = 'mobilia') {
       const nEq = S.items.filter(i => ITEMS[i.type].kind === 'equip').length + Object.entries(S.inv).filter(([k]) => ITEMS[k] && ITEMS[k].kind === 'equip').reduce((a, [, v]) => a + v, 0);
       for (const [k, d] of Object.entries(ITEMS).filter(([, d]) => d.cat === tab)) {
         const locked = d.lv > l, capped = d.kind === 'equip' && nEq >= stoveCap(l);
-        let desc = locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : capped ? 'Limite de equipamentos no seu nível' : (d.charm ? `+${d.charm} de charme` : d.kind === 'equip' ? 'Prepara: ' + RECIPES.filter(r => r.eq === d.eq).slice(0, 3).map(r => r.n).join(', ') : d.kind === 'chair' ? 'Vire para uma mesa' : d.kind === 'counter' ? 'Guarda os pratos prontos' : 'Lugar para os clientes');
+        let desc = locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : capped ? 'Limite de equipamentos no seu nível' : (d.charm ? `+${d.charm} de charme` : d.kind === 'equip' ? 'Prepara: ' + RECIPES.filter(r => r.eq === d.eq).slice(0, 3).map(r => r.n).join(', ') : d.kind === 'chair' ? 'Vire para uma mesa' : d.kind === 'counter' ? 'Guarda os pratos prontos' : d.kind === 'sink' ? 'Lava a louça suja' : 'Lugar para os clientes');
         const gemOnly = !!d.gprice, short = gemOnly ? (S.gems || 0) < d.gprice : S.coins < d.price;
         if (gemOnly) desc = (locked ? `${ic('lock', 'mi')} Nível ${d.lv}` : `<span class="rtag gemonly">Só diamantes</span>`) + (d.charm ? `<br>+${d.charm} de charme` : '');
         const c = card(thumbItem(k, 76), d.n, desc, locked ? `Nível ${d.lv}` : gemOnly ? gprice(d.gprice) : price(d.price), {
@@ -423,7 +423,6 @@ export function openEquip(it) {
     });
     return;
   }
-  if (S.open === false && !G.visiting) { toast('O café está fechado. Abra para preparar receitas.'); return; }
   openPanel(`${d.n} · o que preparar?`, 'book', body => {
     body.appendChild(h('p', 'sub', `${esc(chefName)} vai até o equipamento, começa a receita e fica livre de novo. O preparo continua sozinho, mesmo com o jogo fechado.`));
     const grid = h('div', 'grid'); body.appendChild(grid);
@@ -506,6 +505,7 @@ export function openShelf(it = null, w = G.world) {
     }
   });
 }
+on('nosink', () => toast('Os garçons não têm onde lavar a louça: os lugares sujos ficam bloqueados. Compre uma pia na loja (Cozinha).'));
 on('mastery', m => { const R = recipe(m.rid); toast(`${'★'.repeat(m.stars)} ${R.n}: nova estrela! +${m.coins} moedas` + (m.gift ? ` e 1 ${boost(m.gift).n}` : '')); sfx('ding'); });
 
 // ---------------- inventory ----------------
@@ -1014,9 +1014,9 @@ export function listenSocial() {
 
 // ---------------- café open / closed (café only; the world keeps running) ----------------
 export function toggleOpen() {
-  const S = G.S; S.open = S.open === false; save(); sfx(S.open ? 'level' : 'pop');
+  const S = G.S; S.open = S.open === false; save(); sfx('bell'); if (G.world && G.world.own) G.world.doorPulse = now() + 1100;   // door swings, shop bell rings
   const b = $('bOpen'); b.classList.remove('flip'); void b.offsetWidth; b.classList.add('flip');
-  toast(S.open ? 'Café aberto! Os clientes já podem entrar.' : 'Café fechado. Quem já pediu termina a refeição; o mundo continua lá fora.');
+  toast(S.open ? 'Café aberto! Os clientes já podem entrar.' : 'Café fechado. Ninguém novo entra; quem já pediu termina. Você pode cozinhar e arrumar o salão.');
   refreshOpen();
 }
 export function refreshOpen() {

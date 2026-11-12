@@ -120,7 +120,6 @@ export function burnLeft(it) {
 export const isOpen = st => st.open !== false;
 export function startCook(w, it, rid, paid) {
   const R = recipe(rid);
-  if (!isOpen(w.st)) return false;
   if (w.own && !paid) { if (G.S.coins < R.cost) return false; addCoins(-R.cost); addFloat(w, it.x + .5, it.y + .5, 60, '-' + R.cost, 'coin'); }
   it.cook = { r: rid, s: now() }; it.last = rid;
   if (w.own) { save(); emit('sound', 'cook'); }
@@ -129,8 +128,7 @@ export function startCook(w, it, rid, paid) {
 // The player picks a recipe on an equipment: it becomes a pending order the avatar walks over to start.
 export function queueCook(w, it, rid) {
   const R = recipe(rid);
-  if (!isOpen(w.st)) return 'closed';
-  if (it.cook || it.pending) return 'busy';
+  if (it.cook || it.pending) return 'busy';   // cooking is allowed with the door closed: that's how the café gets ready
   if (w.own && G.S.coins < R.cost) return 'coins';
   if (w.own && !hasIngredients(R)) return 'ingredient';         // special ingredient missing from the pantry
   if (w.own) {
@@ -283,16 +281,16 @@ function spawnInterval(w) {
   return Math.max(2.5, 15 / Math.sqrt(n)) * (1.35 - rep(w.st) * .5) * (1.3 - pop * .6) * 1000;
 }
 export function tableOf(st, chairId) { const ch = st.items.find(i => i.id === chairId); return ch ? seatInfo(st, ch) : null; }
-export const isDirty = t => !!(t && t.dirty);
+// Dirty dishes belong to the seat that used them (documento mestre §14): chair.dirty = 1 while the plate is on
+// the table, 2 while a waiter carries it to the sink. Only that seat is blocked until the dishes are washed.
+export const isDirty = ch => !!(ch && ch.dirty);
+export const dirtySeats = (st, t) => st.items.filter(ch => ch.dirty && ITEMS[ch.type].kind === 'chair' && (!t || seatInfo(st, ch) === t));
+export const sinks = st => st.items.filter(i => ITEMS[i.type].kind === 'sink');
 function freeSeats(w) {
   const st = w.st, taken = new Set();
   for (const c of w.custs) if (c.seat) taken.add(c.seat);
-  // one guest per chair (a table with four chairs seats four); a dirty table takes no new guests until it is wiped
-  return seats(st).filter(ch => {
-    if (taken.has(ch.id)) return false;
-    const t = seatInfo(st, ch);
-    return t && !isDirty(t);
-  });
+  // one guest per chair (a table with four chairs seats four); a seat with dirty dishes waits for the sink
+  return seats(st).filter(ch => !taken.has(ch.id) && !isDirty(ch) && seatInfo(st, ch));
 }
 
 function trySeat(w, c) {
@@ -305,7 +303,7 @@ function leave(w, c, mood) {
   c.sitting = false;
   const tid = c.table;
   if (tid && w.tableFood[tid]) w.tableFood[tid] = w.tableFood[tid].filter(f => f.cust !== c.id);
-  if (tid && c.dish) { const tb = w.st.items.find(i => i.id === tid); if (tb) { tb.dirty = 1; if (w.own) save(); } }
+  if (tid && c.dish && c.seat) { const ch = w.st.items.find(i => i.id === c.seat); if (ch) { ch.dirty = 1; if (w.own) save(); } }
   c.state = 'leave'; c.seat = null; c.mood = mood || c.mood;
   if (!route(w, c, { kind: 'exit' })) c.wp = [[.5, doorY(w.st) + .5], ...outsideOut(w.st)];
 }
@@ -528,6 +526,7 @@ function dropJob(w, s) {
   if (j.kind === 'serve') { const c = w.custs.find(c => c.id === j.cust); if (c && c.waiter === s.id) c.waiter = null; if (s.carry && j.phase === 'toTable') { const cnt = targetCounter(w.st, s.carry); if (cnt) putOnCounter(cnt, s.carry, 1); } }
   if (j.kind === 'drink') { const c = w.custs.find(x => x.id === j.cust); if (c && c.drinkWaiter === s.id) c.drinkWaiter = null; }
   if (j.kind === 'clean' || j.kind === 'bin') s.cookAnim = false;
+  if (j.kind === 'bus' && j.phase === 'toSink') { const ch = w.st.items.find(i => i.id === j.seat); if (ch && ch.dirty === 2) ch.dirty = 1; }   // dishes go back on the table, never vanish
   if (j.kind === 'plate' && s.carry) { const cnt = targetCounter(w.st, s.carry); if (cnt) putOnCounter(cnt, s.carry, s.carryN || 1); }
   s.carry = null; s.job = null; s.wp = []; s.target = null; s.faceTo = null; s.cookAnim = false;
 }
@@ -561,17 +560,23 @@ function waiterAI(w, s) {
     if (route(w, s, { kind: 'item', id: mach.id })) { c.drinkWaiter = s.id; s.job = { kind: 'drink', cust: c.id, mach: mach.id, phase: 'toMach' }; return; }
   }
   }
-  // nothing to serve: wipe the tables guests left behind
-  const busyT = new Set(w.staff.filter(x => x.job && x.job.kind === 'clean').map(x => x.job.table));
+  // nothing to serve: take the dirty dishes guests left to the sink
+  const busy = new Set(w.staff.filter(x => x.job && x.job.kind === 'bus').map(x => x.job.seat));
+  const sk = sinks(w.st);
+  w.noSink = !sk.length && dirtySeats(w.st).length > 0;
+  if (w.noSink && w.own && !w.noSinkWarned) { w.noSinkWarned = 1; emit('nosink'); }   // once per session
+  if (!sk.length) return;                                   // no sink: the dishes wait and the player is warned
   w.cleanT = w.cleanT || {};
-  for (const t of w.st.items.filter(i => isDirty(i) && !busyT.has(i.id))) {
-    // `near`: a table boxed in by chairs on every side is wiped from the closest free tile
-    if (route(w, s, { kind: 'item', id: t.id, near: true })) { delete w.cleanT[t.id]; s.job = { kind: 'clean', table: t.id }; return; }
+  for (const ch of w.st.items.filter(i => i.dirty === 1 && !busy.has(i.id))) {
+    const t = seatInfo(w.st, ch);
+    if (!t) { ch.dirty = 0; continue; }                     // the table was moved away: nothing left to pick up
+    // `near`: a table boxed in by chairs on every side is reached from the closest free tile
+    if (route(w, s, { kind: 'item', id: t.id, near: true })) { delete w.cleanT[ch.id]; s.job = { kind: 'bus', seat: ch.id, table: t.id, phase: 'toTable' }; return; }
     // no way to reach it at all: after a few seconds the waiter improvises instead of leaving it dirty forever
-    if (!w.cleanT[t.id]) w.cleanT[t.id] = now();
-    else if (now() - w.cleanT[t.id] > 3000) {
-      delete w.cleanT[t.id]; s.wp = []; s.target = null;
-      s.job = { kind: 'clean', table: t.id, t0: now(), magic: 1 }; s.cookAnim = true; s.faceTo = [t.x + .5, t.y + .5];
+    if (!w.cleanT[ch.id]) w.cleanT[ch.id] = now();
+    else if (now() - w.cleanT[ch.id] > 3000) {
+      delete w.cleanT[ch.id]; s.wp = []; s.target = null;
+      s.job = { kind: 'bus', seat: ch.id, table: t.id, phase: 'toTable', t0: now(), magic: 1 }; s.cookAnim = true; s.faceTo = [t.x + .5, t.y + .5];
       return;
     }
   }
@@ -632,6 +637,10 @@ function ownerAI(w, s) {
   }
 }
 // A ready dish moved straight from its equipment to a counter (with a sparkle), when no path exists.
+function nearestSink(w, s) {
+  const list = sinks(w.st); if (!list.length) return null;
+  return list.sort((a, b) => Math.hypot(a.x + .5 - s.gx, a.y + .5 - s.gy) - Math.hypot(b.x + .5 - s.gx, b.y + .5 - s.gy))[0];
+}
 function magicPlate(w, it, cnt) {
   const R = recipe(it.cook.r), n = takeFromStove(w, it, cnt);
   if (!n) return;
@@ -702,14 +711,28 @@ function jobArrive(w, s) {
     if (now() - j.t0 < CLEAN_MS) return;
     s.cookAnim = false; c.stock = null; s.job = null; s.idleT = .4;
     if (w.own) { addFloat(w, c.x + .5, c.y + .5, 60, 'descartado', 'neg'); save(); }
-  } else if (j.kind === 'clean') {
-    const t = st.items.find(i => i.id === j.table);
-    if (!t || !isDirty(t)) { s.job = null; s.idleT = .5; return; }
-    if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = [t.x + .5, t.y + .5]; return; }
-    if (now() - j.t0 < CLEAN_MS) return;
-    s.cookAnim = false; t.dirty = 0; s.job = null; s.idleT = .6;
-    if (w.own) emit('sound1', 'cutlery');
-    if (w.own) { addFloat(w, t.x + .5, t.y + .5, 60, '✨', 'xp'); save(); }
+  } else if (j.kind === 'clean') { s.job = null; s.cookAnim = false;   // old saves' table wiping: now done by 'bus'
+  } else if (j.kind === 'bus') {
+    const ch = st.items.find(i => i.id === j.seat);
+    if (!ch || !ch.dirty) { s.job = null; s.cookAnim = false; s.carry = null; s.idleT = .5; return; }
+    if (j.phase === 'toTable') {
+      const t = st.items.find(i => i.id === j.table);
+      if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = t ? [t.x + .5, t.y + .5] : null; return; }
+      if (now() - j.t0 < CLEAN_MS) return;
+      s.cookAnim = false; ch.dirty = 2; s.carry = 'dirty'; j.phase = 'toSink'; j.t0 = 0;
+      if (w.own) emit('sound1', 'cutlery');
+      const sink = nearestSink(w, s);
+      if (!sink || !route(w, s, { kind: 'item', id: sink.id })) { j.sink = sink && sink.id; j.stuck = now(); } else j.sink = sink.id;
+    } else {
+      const sink = st.items.find(i => i.id === j.sink) || nearestSink(w, s);
+      if (!sink) { ch.dirty = 1; s.carry = null; s.job = null; s.idleT = 1; return; }   // the sink was removed: dishes back on the table
+      // can't reach the sink from here: after a few seconds the dishes get washed anyway, never left in the air
+      if (j.stuck && now() - j.stuck < 3000) return;
+      if (!j.t0) { j.t0 = now(); s.cookAnim = true; s.faceTo = [sink.x + .5, sink.y + .5]; return; }
+      if (now() - j.t0 < (ITEMS[sink.type].wash || 2000)) return;
+      s.cookAnim = false; ch.dirty = 0; s.carry = null; s.job = null; s.idleT = .6;
+      if (w.own) { emit('sound1', 'cutlery'); addFloat(w, sink.x + .5, sink.y + .5, 70, '✨', 'xp'); save(); }
+    }
   } else if (j.kind === 'plate') {
     const it = st.items.find(i => i.id === j.eq);
     if (j.phase === 'toEq') {
@@ -731,6 +754,7 @@ function jobArrive(w, s) {
 }
 // true while a guest is crossing the doorway, so the leaf can swing open just for the passage
 export function doorInUse(w) {
+  if (w.doorPulse && now() < w.doorPulse) return true;   // the player just opened or closed the café
   const dy = doorY(w.st) + .5;
   for (const c of w.custs) {
     if (c.state !== 'enter' && c.state !== 'leave') continue;
@@ -747,9 +771,9 @@ function updateStaff(w, dt) {
       const c = w.custs.find(c => c.id === s.job.cust); s.stuckT = 0;
       if (c && c.state === 'wait') magicServe(w, s, c, !!s.carry); else dropJob(w, s);
     }
-    if (s.job && s.job.kind === 'clean' && s.stuckT > 4) { s.stuckT = 0; dropJob(w, s); }   // blocked on the way: pick it up again later
+    if (s.job && s.job.kind === 'bus' && s.stuckT > 4) { s.stuckT = 0; dropJob(w, s); }   // blocked on the way: pick it up again later
     if (s.job) { if (arrived) jobArrive(w, s); continue; }
-    if (!isOpen(w.st)) { if (!s.wp.length) s.idleT = Math.max(s.idleT, .5); continue; }   // closed: staff stand down
+    if (!isOpen(w.st) && s.role !== 'owner') { if (!s.wp.length) s.idleT = Math.max(s.idleT, .5); continue; }   // closed: waiters stand down, the chef keeps cooking
     if (s.role === 'owner') ownerAI(w, s); else waiterAI(w, s);
     if (!s.job) wander(w, s, dt);
   }

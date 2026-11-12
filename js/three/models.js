@@ -383,6 +383,28 @@ function displayModel(entry) {
   box(top, .92, .03, .76, '#c99a5c', 0, .36, 0, { rough: .4, coat: .4 }, .015);
   return g;
 }
+// kitchen sink: counter with a steel basin, a goose-neck tap and a little stack of clean plates
+function sinkModel() {
+  const g = new THREE.Group();
+  g.add(model('r_kitchencounter_straight_B'));
+  const top = new THREE.Group(); top.position.y = .5; g.add(top);
+  box(top, .9, .03, .74, '#eef1f2', 0, 0, 0, { rough: .25, metal: .5 }, .012);
+  box(top, .46, .012, .38, '#9fb0b8', -.08, .022, .04, { rough: .2, metal: .8 }, .02);
+  box(top, .42, .006, .34, '#c9e6f0', -.08, .03, .04, { rough: .05, coat: 1, opacity: .7 }, .02);
+  cyl(top, .022, .026, .26, '#d9dee1', -.08, .02, -.27, { rough: .15, metal: .9 }, 12);
+  const neck = torus(top, .07, .016, '#d9dee1', { rough: .15, metal: .9 }, Math.PI); neck.position.set(-.08, .28, -.2); neck.rotation.y = Math.PI / 2;
+  for (const x of [-.16, 0]) cyl(top, .02, .02, .03, '#f6b3b8', x, .03, -.3, {}, 10);
+  for (let i = 0; i < 4; i++) cyl(top, .1, .085, .014, '#fffaf2', .3, .04 + i * .018, .1, { rough: .35, coat: .4 }, 18);
+  return g;
+}
+// dishwasher: steel front with a handle and a green light, faster than the sink
+function dishwasherModel() {
+  const g = sinkModel();
+  box(g, .8, .38, .03, '#cfd6da', 0, .24, .37, { rough: .2, metal: .85 }, .02);
+  box(g, .5, .03, .03, '#8d989e', 0, .4, .4, { rough: .2, metal: .9 }, .012);
+  sphere(g, .018, '#7cc3a6', .3, .4, .39, { emissive: '#7cc3a6', ei: 1.6 });
+  return g;
+}
 function vase(g, y) {
   lathe(g, [[0, 0], [.025, 0], [.035, .03], [.02, .06], [.024, .075], [0, .075]], '#9cc1e0', { rough: .1, coat: 1 }, 16, 'vase').position.y = y;
   const parts = [], petal = cachedGeo('petal', () => new THREE.SphereGeometry(1, 10, 8));
@@ -396,14 +418,16 @@ function vase(g, y) {
 // ---------- build entry ----------
 const KAY_MAP = {
   table_round: ['r_table_round_A_small', [.6, .5, .6]], table_square: ['f_table_small', [.9, .5, .9]], table_marble: ['r_table_round_B', [.3, .5, .3]],
+  table_long: ['f_table_small', [1, .5, 1]], table_high: ['r_kitchentable_A', [.5, .78, .5]],
+  booth: ['f_armchair_pillows', [.5, .5, .5]], stool: ['f_chair_stool_wood', [1, 1, 1]],
   chair_wood: ['f_chair_A_wood', .5], chair_cushion: ['f_chair_A', .5], chair_bistro: ['r_chair_A', .5],
   counter: ['r_kitchencounter_straight_A', .5], stove: ['r_stove_single', .5],
   lamp: ['f_lamp_standing', .5], shelf: ['f_cabinet_small_decorated', .62], cactus: ['f_cactus_medium_A', .5],
   armchair: ['f_armchair_pillows', .5], cabinet: ['f_cabinet_medium_decorated', .45], fridge: ['r_fridge_A_decorated', .45], crates: ['r_crate_buns', .42],
   crate_carrots: ['r_crate_carrots', .42], crate_cheese: ['r_crate_cheese', .42], crate_lettuce: ['r_crate_lettuce', .42], crate_steak: ['r_crate_steak', .42], kcabinet: ['r_kitchencabinet', .45],
 };
-const PROC = { forno: fornoModel, gelateria: gelatoModel, chocolateira: chocoModel, lustre: lustreModel, vitrine_ouro: goldCaseModel, tapete_persa: rugModel, plant: plantModel, ficus: ficusModel, flowers: flowersModel, sunflower: sunflowerModel, teddy: teddyModel, jukebox: jukeboxModel, display: displayModel };
-const HEIGHT = { kcabinet: 1, forno: 1.55, gelateria: 1.35, chocolateira: 1.3, lustre: 1.9, vitrine_ouro: 1.05, tapete_persa: .06, stove: 1.1, coffee: 1.2, blender: 1.45, counter: .9, lamp: 1.3, ficus: 1.1, shelf: 1.05, fridge: 1.2, jukebox: 1, display: 1, cabinet: .9 };
+const PROC = { sink: sinkModel, dishwasher: dishwasherModel, forno: fornoModel, gelateria: gelatoModel, chocolateira: chocoModel, lustre: lustreModel, vitrine_ouro: goldCaseModel, tapete_persa: rugModel, plant: plantModel, ficus: ficusModel, flowers: flowersModel, sunflower: sunflowerModel, teddy: teddyModel, jukebox: jukeboxModel, display: displayModel };
+const HEIGHT = { sink: .95, dishwasher: .95, kcabinet: 1, forno: 1.55, gelateria: 1.35, chocolateira: 1.3, lustre: 1.9, vitrine_ouro: 1.05, tapete_persa: .06, stove: 1.1, coffee: 1.2, blender: 1.45, counter: .9, lamp: 1.3, ficus: 1.1, shelf: 1.05, fridge: 1.2, jukebox: 1, display: 1, cabinet: .9 };
 
 export function buildItem(it, opt = {}) {
   const d = ITEMS[it.type], kind = d.kind;
@@ -416,7 +440,7 @@ export function buildItem(it, opt = {}) {
   if (d.kind === 'window') entry.body.add(windowModel(entry, d.style));
   else if (d.kind === 'door') entry.body.add(doorMarkModel(entry));
   else if (PROC[it.type]) entry.body.add(PROC[it.type](entry));
-  if (kind === 'table') { vase(entry.body, .5); entry.topY = .5; }
+  if (kind === 'table') { const ty = d.topY || .5; vase(entry.body, ty); entry.topY = ty; }
   if (it.type === 'stove') {
     const pot = model('r_pot_A', .62); pot.position.set(.02, .55, .03); pot.visible = false; entry.body.add(pot);
     const lid = model('r_lid_A', .56); lid.position.set(.02, .9, .03); lid.visible = false; entry.body.add(lid);
@@ -537,12 +561,17 @@ function dirtyDishes() {
   cyl(g, .012, .012, .17, '#cfc8c0', .1, .03, .08, { rough: .3, metal: .6 }, 6).rotation.set(0, .4, 1.45);
   return g;
 }
-export function updateTableFood(entry, foods, dirty) {
-  const key = (dirty ? 'D' : '') + (foods || []).map(f => f.r + f.dir + (f.eaten > .66 ? 'e' : '')).join(',');
+export function updateTableFood(entry, foods, dirty) {   // dirty: directions of the seats that left dishes
+  dirty = dirty || [];
+  const key = 'D' + dirty.join('') + ':' + (foods || []).map(f => f.r + f.dir + (f.eaten > .66 ? 'e' : '')).join(',');
   if (entry.tfKey !== key) {
     entry.tfKey = key;
     for (const f of entry.tfoods || []) disposeTree(f); entry.tfoods = [];
-    if (dirty) { const d = dirtyDishes(); d.position.set(0, entry.topY, 0); entry.group.add(d); entry.tfoods.push(d); d.userData.f = { eaten: 0, dirty: 1 }; }
+    for (const dir of dirty) {
+      const D = [[0, 1], [1, 0], [0, -1], [-1, 0]][dir], d = dirtyDishes();
+      d.position.copy(new THREE.Vector3(D[0] * .14, entry.topY, D[1] * .14).applyAxisAngle(new THREE.Vector3(0, 1, 0), -entry.group.rotation.y));
+      d.scale.setScalar(.62); entry.group.add(d); entry.tfoods.push(d); d.userData.f = { eaten: 0, dirty: 1 };
+    }
     for (const f of foods || []) {
       const m = food3d(f.r); const D = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.dir];
       // table group is rotated; place in world-aligned offset by undoing its yaw

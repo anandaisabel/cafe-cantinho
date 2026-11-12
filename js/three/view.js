@@ -75,6 +75,9 @@ export function syncView(w, t, dt) {
   V.grid.visible = editing;
   // items
   const seen = new Set(), drag = G.drag;
+  // dirty dishes still on a table, one per seat that used it, placed towards that seat
+  const dirtyAt = {};
+  for (const ch of st.items) if (ch.dirty === 1 && ITEMS[ch.type].kind === 'chair') { const t = seatInfo(st, ch); if (t) (dirtyAt[t.id] = dirtyAt[t.id] || []).push(((ch.rot || 0) + 2) % 4); }
   for (const it of st.items) {
     seen.add(it.id);
     let e = V.items.get(it.id);
@@ -83,9 +86,9 @@ export function syncView(w, t, dt) {
     e.group.rotation.y = rotYaw(it.rot); e.rot = it.rot;
     e.group.visible = !(drag && drag.id === it.id);
     updateItem(e, it, t, { hover: V.hover && V.hover.id === it.id, selected: editing && G.sel === it.id });
-    if (ITEMS[it.type].kind === 'table') updateTableFood(e, w.tableFood[it.id], !!it.dirty);
+    if (ITEMS[it.type].kind === 'table') updateTableFood(e, w.tableFood[it.id], dirtyAt[it.id]);
     // a chair occupies its whole grid cell, but sits snug against the table it faces (local +z = facing)
-    if (ITEMS[it.type].kind === 'chair') e.body.position.z = seatInfo(st, it) ? CHAIR_PULL : 0;
+    if (ITEMS[it.type].kind === 'chair') e.body.position.z = seatInfo(st, it) ? (ITEMS[it.type].pull ?? CHAIR_PULL) : 0;
     if (e.opening) placeOnWall(e, it);
   }
   for (const [id, e] of V.items) if (!seen.has(id)) { disposeTree(e.group); e.dom && e.dom.remove(); V.items.delete(id); }
@@ -112,10 +115,10 @@ export function syncView(w, t, dt) {
     if (!C) { C = buildChar(c.look, c.role); C.role = c.role; V.chars.set(c.id, C); E.scene.add(C.root); C.root.traverse(o => o.isMesh && (o.userData.charId = c.id)); C.hitbox = makeCharHit(C, c); }
     let o = {};
     let pull = null;
-    if (c.sitting && c.seat) { const ch = st.items.find(i => i.id === c.seat); if (ch) { o.seatYaw = rotYaw(ch.rot); o.seatY = .29; if (seatInfo(st, ch)) pull = [[0, 1], [1, 0], [0, -1], [-1, 0]][ch.rot || 0]; } }
+    if (c.sitting && c.seat) { const ch = st.items.find(i => i.id === c.seat); if (ch) { o.seatYaw = rotYaw(ch.rot); o.seatY = ITEMS[ch.type].seatY || .29; if (seatInfo(st, ch)) { pull = [[0, 1], [1, 0], [0, -1], [-1, 0]][ch.rot || 0]; o.pull = ITEMS[ch.type].pull ?? CHAIR_PULL; } } }
     if (c._celebrate) { const p = (t - c._celebrate) / 900; if (p < 1) o.celebrate = p; else c._celebrate = 0; }
     animateChar(C, c, at, adt, o);
-    if (pull) { const d = CHAIR_PULL + (C.hero ? HERO_SIT_FWD : 0); C.root.position.x += pull[0] * d; C.root.position.z += pull[1] * d; }
+    if (pull) { const d = o.pull + (C.hero ? HERO_SIT_FWD : 0); C.root.position.x += pull[0] * d; C.root.position.z += pull[1] * d; }
   }
   for (const [id, C] of V.chars) if (!live.has(id)) { disposeTree(C.root); C.dom && C.dom.remove(); C.dom2 && C.dom2.remove(); C.dom3 && C.dom3.remove(); V.chars.delete(id); }
   assignLights(st);
@@ -169,7 +172,7 @@ function resolve(k) {
     p.d.style.transform = `translate(${p.sx | 0}px,${y | 0}px)`;
   }
 }
-const SIZE = { 'st drinkready': [84, 30, 3], 'st drinkready ask': [84, 30, 4], drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [62, 26, 2], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
+const SIZE = { 'st drinkready': [84, 30, 3], 'st drinkready ask': [84, 30, 4], drinkb: [58, 62, 6], nametag: [64, 18, 0], mkt: [58, 30, 8], bub: [60, 74, 5], 'st dirty': [84, 30, 3], 'st idle': [30, 30, 1], 'st cook': [56, 72, 3], 'st ready': [84, 32, 4], 'st stock': [34, 26, 2] };
 let placed = [];
 function updateOverlays(w, t) {
   placed = [];
@@ -197,7 +200,7 @@ function updateOverlays(w, t) {
         }
       }
     }
-    if (kind === 'table' && isDirty(it) && !G.visiting) { cls = 'st dirty'; html = `<b>Limpar</b>`; }
+    if (kind === 'table' && w.noSink && !G.visiting && st.items.some(ch => ch.dirty && seatInfo(st, ch) === it)) { cls = 'st dirty'; html = `<b>Falta pia</b>`; }
     if (kind === 'counter' && it.stock && it.stock.left > 0) {
       if (spoiled(it)) { cls = 'st stock bad'; html = `<b>Estragou</b>`; }
       else { const fl = freshLeft(it); cls = 'st stock' + (fl < .3 ? ' warn' : ''); html = `<b>${it.stock.left}</b>`; }
