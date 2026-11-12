@@ -109,6 +109,7 @@ async function boot() {
   setClock(G.S.t);                                      // resume every gameplay timer where it stopped
   catchUp(G.S, wall() - (G.S.lastSeen || wall()));      // ...except stoves and energy, which kept going while closed
   G.world = makeWorld(G.S, true);
+  G.beforeSave = () => { if (G.world && G.world.own) G.S.guests = SIM.snapshotGuests(G.world); };
   fitRoom(G.S.size, topPad(), botPad());
   initInput(cv);
   // if the phone drops the 3D context, save and reload instead of freezing

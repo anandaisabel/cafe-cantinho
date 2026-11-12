@@ -212,7 +212,14 @@ function updateOverlays(w, t) {
     if (!html) { if (e.dom) { e.dom.remove(); e.dom = null; } continue; }
     if (!e.dom) e.dom = el('ov');
     if (e.domKey !== key) { e.dom.className = 'ov ' + cls; e.dom.innerHTML = html; fillSlots(e.dom); e.domKey = key; }
-    else if (cls === 'st cook') { const r = e.dom.querySelector('.ring'), s = e.dom.querySelector('small'); const R = recipe(it.cook.r), left = R.t - (now() - it.cook.s) / 1000; r.style.setProperty('--p', ((1 - left / R.t) * 100).toFixed(1) + '%'); s.textContent = fmtTime(left); }
+    else if (cls === 'st cook') {
+      // the same ring serves a dish on the stove and a drink batch brewing in a machine
+      const r = e.dom.querySelector('.ring'), sm = e.dom.querySelector('small');
+      let total = 0, left = 0;
+      if (it.cook) { const R = recipe(it.cook.r); total = R.t; left = R.t - (now() - it.cook.s) / 1000; }
+      else if (it.brew) { total = brewTime(recipe(it.brew.r)); left = brewLeft(it); }
+      if (r && sm && total) { r.style.setProperty('--p', ((1 - left / total) * 100).toFixed(1) + '%'); sm.textContent = fmtTime(left); }
+    }
     const yy = cls === 'st ready' ? 1.55 : cls === 'st dirty' ? .95 : cls.startsWith('st drinkready') ? .95 : kind === 'counter' ? .75 : 1.3;
     queue(e.dom, it.x + .5, yy, it.y + .5, cls);
   }

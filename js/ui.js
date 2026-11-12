@@ -157,7 +157,7 @@ export function refreshOrders() {
 export function openPanel(title, iconName, build, opts = {}) {
   const p = $('panel'), body = $('panelBody');
   $('panelTitle').innerHTML = (iconName ? ic(iconName, 'ptic') : '') + `<span>${esc(title)}</span>`;
-  body.innerHTML = ''; p.className = 'panel open' + (opts.small ? ' small' : '');
+  body.innerHTML = ''; p.className = 'panel open' + (opts.small ? ' small' : '') + (opts.cls ? ' ' + opts.cls : '');
   $('shade').classList.add('open'); G.panelAt = performance.now();
   build(body);
   sfx('click');
@@ -494,23 +494,71 @@ export function openCounter(it) {
 }
 const starRow = rid => { const n = stars(rid); return `<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`; };
 const masteryTxt = rid => { const n = stars(rid); return n >= 5 ? 'Domínio máximo' : `${masteryCount(rid)}/${MASTERY_AT[n]} preparos para a ${n + 1}ª estrela`; };
-// Recipe book: every dish and drink, filtered by cooking time, with mastery stars
-export function openRecipes(cat = 'all') {
+// Recipe book (reference: a ring-bound notebook). Coloured tabs filter by cooking time; the left page shows the
+// picked recipe and cooks it on a free stove (or brews it on a machine); the right page lists the recipes.
+const BOOK_TABS = [['all', 'Todas', '#a8dcc6'], ['quick', 'Rápidas', '#f6b3b8'], ['mid', 'Médias', '#ffdf8e'], ['long', 'Longas', '#b4d8f2'], ['special', 'Especiais', '#cfc0ec'], ['drink', 'Bebidas', '#ffc9a3']];
+let bookSel = null;
+export function openRecipes(cat = 'all', sel = bookSel) {
   const l = level(G.S);
+  const list = RECIPES.filter(R => cat === 'all' || recipeCat(R) === cat).sort((a, b) => (a.lv > l) - (b.lv > l) || a.lv - b.lv || a.t - b.t);
+  if (!sel || !list.some(R => R.id === sel)) sel = (list.find(R => R.lv <= l) || list[0] || {}).id;
+  bookSel = sel;
   openPanel('Livro de receitas', 'book', body => {
-    tabs(body, RECIPE_CATS, cat, k => openRecipes(k));
-    body.appendChild(h('p', 'sub', 'Cada estrela de domínio rende 5% mais porções e XP. Prepare um prato várias vezes para ganhar estrelas. Pratos longos continuam no fogo com o jogo fechado.'));
-    const tb = h('button', 'btn ghost shelfbtn', `${ic('b_tomilho', 'bi')} Prateleira de temperos`); tb.onclick = () => openShelf(); body.appendChild(tb);
-    const list = RECIPES.filter(R => cat === 'all' || recipeCat(R) === cat).sort((a, b) => (a.lv > l) - (b.lv > l) || a.lv - b.lv || a.t - b.t);
-    const grid = h('div', 'grid'); body.appendChild(grid);
-    for (const R of list) {
+    const nb = h('div', 'nb'); body.appendChild(nb);
+    const tabsEl = h('div', 'nbtabs'); nb.appendChild(tabsEl);
+    for (const [k, n, c] of BOOK_TABS) { const t = h('button', 'nbtab' + (k === cat ? ' on' : ''), n); t.style.setProperty('--tc', c); t.onclick = () => openRecipes(k, null); tabsEl.appendChild(t); }
+    const left = h('div', 'nbpage nbleft'), right = h('div', 'nbpage nbright'); nb.append(left, right);
+    const paintLeft = () => {
+      left.innerHTML = '';
+      const R = recipe(bookSel); if (!R) { left.appendChild(h('p', 'sub', 'Nenhuma receita aqui ainda.')); return; }
       const locked = R.lv > l;
-      grid.appendChild(card(thumbFood(R.id, 60), R.n,
-        (locked ? `${ic('lock', 'mi')} Nível ${R.lv}<br>` : R.drink ? '' : `${starRow(R.id)}<br><small>${masteryTxt(R.id)}</small><br>`) +
-        `${EQUIP[R.eq]}${R.drink ? ' · servida na hora' : ''}<br>${ic('clock', 'mi')}${fmtTime(R.t)} · ${R.por} porções · ${ic('coin', 'mi')}${R.price}/porção`, null, { locked }));
+      const big = h('div', 'nbbig'); big.appendChild(thumbFood(R.id, 96)); left.appendChild(big);
+      left.appendChild(h('div', 'nbname', esc(R.n)));
+      if (!R.drink && !locked) left.appendChild(h('div', 'nbstars', `${starRow(R.id)}<small>${masteryTxt(R.id)}</small>`));
+      const need = R.need && spice(R.need.id);
+      const facts = R.drink
+        ? [['clock', fmtTime(brewTime(R))], ['box', `${brewYield(R)} copos`], ['coin', `${R.price}/copo`], ['star', `+${R.xp} xp`]]
+        : [['clock', fmtTime(R.t)], ['box', `${Math.round(R.por * (1 + stars(R.id) * .05))} porções`], ['coin', `${R.price}/porção`], ['star', `+${R.xp} xp`]];
+      const fg = h('div', 'nbfacts'); for (const [i, t] of facts) fg.appendChild(h('div', 'nbfact', `${ic(i, 'mi')}<span>${t}</span>`)); left.appendChild(fg);
+      left.appendChild(h('div', 'nbeq', `${EQUIP[R.eq]}${need ? ` · <span class="${hasIngredients(R) ? 'okneed' : 'noneed'}">${R.need.n || 1}× ${need.n} (tem ${spiceCount(R.need.id)})</span>` : ''}`));
+      const cost = R.drink ? brewCost(R) : R.cost;
+      const go = h('button', 'btn nbgo', locked ? `${ic('lock', 'bi')} Nível ${R.lv}` : `${R.drink ? 'Preparar' : 'Cozinhar'} ${price(cost)}`);
+      go.disabled = locked || !!G.visiting || G.S.coins < cost || !hasIngredients(R);
+      go.onclick = () => cookFromBook(R);
+      left.appendChild(go);
+    };
+    right.appendChild(h('div', 'nbhead', BOOK_TABS.find(t => t[0] === cat)[1]));
+    const grid = h('div', 'nbgrid'); right.appendChild(grid);
+    for (const R of list) {
+      const locked = R.lv > l, n = R.drink ? 0 : stars(R.id);
+      const tile = h('button', 'nbtile' + (locked ? ' locked' : '') + (R.id === bookSel ? ' sel' : ''));
+      tile.appendChild(thumbFood(R.id, 50));
+      tile.appendChild(h('span', 'nbbadge', locked ? `${ICON.lock}` : n ? '★' + n : ''));
+      if (locked) tile.appendChild(h('small', '', 'Nv ' + R.lv));
+      tile.onclick = () => { bookSel = R.id; grid.querySelectorAll('.nbtile').forEach(x => x.classList.toggle('sel', x === tile)); paintLeft(); sfx('click'); };
+      grid.appendChild(tile);
     }
-    if (!list.length) body.appendChild(h('p', 'sub', 'Nenhuma receita aqui ainda.'));
-  });
+    if (!list.length) right.appendChild(h('p', 'sub', 'Nenhuma receita aqui ainda.'));
+    const tb = h('button', 'btn ghost small nbshelf', `${ic('b_tomilho', 'bi')} Temperos`); tb.onclick = () => openShelf(); right.appendChild(tb);
+    paintLeft();
+  }, { cls: 'bookp' });
+}
+// Cook a recipe from the book: the first free equipment that makes it (stoves queue for the chef; machines brew)
+function cookFromBook(R) {
+  const w = G.world, S = G.S;
+  const eqs = S.items.filter(i => ITEMS[i.type].kind === 'equip' && ITEMS[i.type].eq === R.eq);
+  if (!eqs.length) { toast(`Você ainda não tem ${EQUIP[R.eq].toLowerCase()}. Compre na loja.`); return; }
+  if (R.drink) {
+    let last = 'busy';
+    for (const it of eqs) { const r = startBrew(w, it, R.id); if (r === 'ok') { toast(`Preparando ${R.n.toLowerCase()}…`); refreshHUD(); closePanel(); return; } last = r; }
+    toast(last === 'other' ? 'As máquinas estão com outro sabor: esvazie uma antes' : last === 'full' ? 'O estoque dessa bebida já está cheio' : last === 'broken' ? 'A máquina quebrou: toque nela para consertar' : last === 'coins' ? 'Moedinhas insuficientes' : 'Todas as máquinas estão ocupadas');
+    return;
+  }
+  const free = eqs.find(i => !i.cook && !i.pending);
+  if (!free) { toast(`Todos os equipamentos para ${R.n.toLowerCase()} estão ocupados`); return; }
+  const r = queueCook(w, free, R.id);
+  if (r === 'ok') { const who = (S.avatar && S.avatar.name) || 'Chef'; closePanel(); toast(`${who} vai preparar ${R.n.toLowerCase()}`); refreshHUD(); }
+  else toast(r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não deu para começar agora');
 }
 // Spice shelf: buy boosts, and use one on the dish of equipment `it` (when opened from a stove)
 export function openShelf(it = null, w = G.world) {

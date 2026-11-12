@@ -183,6 +183,7 @@ export async function flush(force) {
   if ((!dirty && !force && !remoteDirty) || !G.S) return;
   if (dirty || force) {
     dirty = false; G.S.lastSeen = wall(); G.S.t = now();
+    if (G.beforeSave) try { G.beforeSave(); } catch (e) { }   // seated guests go into the save
     try { localStorage.setItem(localKey, JSON.stringify(G.S)); } catch (e) { }
     remoteDirty = true;
   }
@@ -246,6 +247,8 @@ export async function load() {
   } catch (e) { if (noNet) throw new Error('Sem internet para entrar na sua conta. Confira a conexão e abra de novo.'); }
   let st;
   // work on a plain copy: data coming back from the account store may be read-only
+  // the newest copy wins: the cloud is written at most every 30 s, so this device's copy is often fresher
+  if (remote && remote.items && local && local.items && (local.lastSeen || 0) > (remote.lastSeen || 0) + 1000) remote = null;
   if (remote && remote.items) { try { st = JSON.parse(JSON.stringify(remote)); } catch (e) { st = { ...remote }; } delete st.owner; delete st.sess; }
   else { st = local; isNew = !local; }
   if (!st || st.v !== 4) isNew = true;

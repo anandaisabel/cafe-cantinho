@@ -32,7 +32,31 @@ export function randLook(body = pick(BODIES), role) {
 export function makeWorld(st, own) {
   const w = { st, own, custs: [], staff: [], floats: [], pops: [], tableFood: {}, spawnAt: now() + 2500 };
   syncStaff(w, true);
+  if (own) restoreGuests(w);
   return w;
+}
+// Seated guests survive a reload (§27.2): saved with the café, put back on their chairs when it opens again.
+export function snapshotGuests(w) {
+  return w.custs.filter(c => c.sitting && c.seat && ['menu', 'wait', 'eat'].includes(c.state)).slice(0, 60).map(c => ({
+    look: c.look, name: c.name, vip: !!c.vip, seat: c.seat, state: c.state, order: c.order || null, drink: c.drink || null,
+    drinkDone: c.drinkDone || 0, drinkSat: c.drinkSat || 0, dish: c.dish || null, patience: c.patience ?? 1, sat: c.sat || 0, eatT: c.eatT || 0 }));
+}
+function restoreGuests(w) {
+  const st = w.st;
+  for (const g of st.guests || []) {
+    const ch = st.items.find(i => i.id === g.seat), t = ch && seatInfo(st, ch);
+    if (!t || ch.dirty || w.custs.some(c => c.seat === ch.id) || !g.look) continue;
+    const c = newChar(g.look, 'cust');
+    Object.assign(c, { name: g.name, vip: g.vip, seat: ch.id, order: g.order, drink: g.drink, drinkDone: g.drinkDone, drinkSat: g.drinkSat,
+      patience: Math.max(.4, g.patience), sat: g.sat, mood: 'happy', sitting: true, alpha: 1, gx: ch.x + .5, gy: ch.y + .5, t0: now(), bornT: now() });
+    sitFacing(c, ch.rot || 0);
+    if (g.state === 'eat' && g.dish && recipe(g.dish)) {
+      c.state = 'eat'; c.dish = g.dish; c.eatT = g.eatT; c.table = t.id;
+      (w.tableFood[t.id] = w.tableFood[t.id] || []).push({ r: g.dish, dir: ((ch.rot || 0) + 2) % 4, cust: c.id, eaten: Math.min(1, g.eatT / 8) });
+    } else c.state = g.order && recipe(g.order) ? 'wait' : 'menu';
+    w.custs.push(c);
+  }
+  st.guests = [];
 }
 export function syncStaff(w, initial) {
   const defs = w.st.avatar ? [w.st.avatar, ...w.st.staff] : w.st.staff;
