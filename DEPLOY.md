@@ -7,7 +7,7 @@ guarda os cafés na nuvem e liga os vizinhos. Sem o Firebase o jogo funciona igu
 |---|---|---|
 | GitHub (repositório público) | guardar o código e hospedar o site | grátis |
 | GitHub Actions | montar o `index.html` e publicar a cada envio | grátis em repositório público |
-| Firebase Authentication | login anônimo automático + "Entrar com Google" | grátis |
+| Firebase Authentication | conta obrigatória: e-mail e senha, recuperação de senha, Google | grátis |
 | Cloud Firestore | cafés na nuvem, vizinhos, presentes e gorjetas | grátis até 50 mil leituras e 20 mil gravações por dia |
 
 ---
@@ -36,7 +36,8 @@ guarda os cafés na nuvem e liga os vizinhos. Sem o Firebase o jogo funciona igu
 
 1. Acesse <https://console.firebase.google.com> → **Adicionar projeto** (nome: `cafe-cantinho`; o Google Analytics pode ficar desligado).
 2. **Build › Authentication › Vamos começar**
-   - Aba **Método de login**: ative **Anônimo** e **Google**.
+   - Aba **Método de login**: ative **E-mail/senha** e **Google** (o **Anônimo** pode ficar ligado: contas antigas
+     anônimas viram conta de e-mail sem perder o café).
    - Aba **Configurações › Domínios autorizados**: adicione `SEU-USUARIO.github.io`.
 3. **Build › Firestore Database › Criar banco de dados**
    - Local: `southamerica-east1 (São Paulo)`. Modo: **produção**.
@@ -53,7 +54,9 @@ guarda os cafés na nuvem e liga os vizinhos. Sem o Firebase o jogo funciona igu
 ## 3. Jogar
 
 - **iPhone:** abra o endereço no Safari → botão **Compartilhar** → **Adicionar à Tela de Início**. Abre em tela cheia, como app.
-- **Mesmo café em vários aparelhos:** Configurações › **Entrar com Google**.
+- **Conta:** o jogo pede para criar conta ou entrar antes de abrir. O mesmo café abre em qualquer aparelho com a
+  mesma conta. Se abrir em dois lugares ao mesmo tempo, o mais novo continua e o outro para de salvar.
+- **Sair:** Configurações › **Sair**.
 - **Vizinhas:** Vizinhos › **Copiar convite** (ou Compartilhar) e mande o link. Quem abrir vira sua vizinha.
   Só aparecem os cafés que você adicionou, nunca os de desconhecidos.
 - **Trazer o café do claude.ai:** na versão do claude.ai, Configurações › Levar meu café › **Exportar**;

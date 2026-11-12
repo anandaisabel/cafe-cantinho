@@ -26,7 +26,15 @@ Estas regras valem para toda tarefa neste repositório.
 ### Decisões que já foram revertidas (não reintroduzir sem pedido)
 - **Ciclo de dia e noite: desligado.** O relógio fica travado em luz de fim de manhã
   (`DAY_HOUR` em `js/world/clock.js`). O código do ciclo continua no repositório, só não avança.
-- **Sem simulação offline.** Fechou o jogo, tudo congela e retoma de onde parou.
+- **Sem simulação offline** (vai mudar: o documento mestre pede fogões e energia correndo com o jogo fechado;
+  aprovado só para fogões e energia; clientes e equipe continuam congelados; fase 2 de `docs/plano-documento-mestre.md`).
+- **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
+  (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
+  (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`
+  no doc e a mais antiga para de salvar (`takenOverScreen`). As regras do Firestore recusam gravação anônima.
+  O artifact do claude.ai e `?offline` não pedem login.
+- **VIP sentado**: o clipe de sentar do KayKit põe o quadril .21 atrás da raiz, então o VIP é puxado mais .17 para a mesa
+  (`HERO_SIT_FWD` em view.js); sem isso o quadril ficava dentro do encosto.
 - **O jogador não recolhe prato à mão.** O chef retira sozinho quando há balcão livre.
 - **Bebidas não vão para o balcão.** O jogador serve tocando no balão de copo sobre o cliente (`serveDrink`),
   pagando só o custo em moedas. Cada bebida tem um bônus (`DRINK_BONUS`: moedas, XP ou satisfação).
@@ -201,6 +209,9 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 - Comida, plantas, máquinas, janelas e portas são procedurais, sem asset externo.
 
 ## Referência de design
+
+`docs/documento-mestre.md`: especificação completa do jogo (recebida em 2026-11-12). `docs/plano-documento-mestre.md`:
+o que já existe, conflitos e fases (fase 1, contas, feita).
 
 `docs/referencia-cafe-mania.md`: como o Café Mania funcionava (pesquisa em blogs de fãs) e o que
 ainda falta trazer. Inspiração de mecânica apenas: nunca nome, arte ou textos.

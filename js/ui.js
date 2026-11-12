@@ -694,20 +694,11 @@ export function openSettings() {
     const sb = h('button', 'btn ghost small', 'Ajustar'); sb.onclick = () => { inp.onchange(); openSound(); };
     row.appendChild(sb); body.appendChild(row);
     if (G.net === 'firebase' && G.user) {
-      // one café on every device: link the anonymous café to a Google account
-      const ar = h('div', 'setrow', `${ic('house', 'mi')} ${G.user.isAnonymous() ? 'Conta' : 'Conta: ' + esc(G.user.email())}`);
-      if (G.user.isAnonymous()) {
-        const gb = h('button', 'btn ghost small', 'Entrar com Google');
-        gb.onclick = async () => {
-          try { const r = await G.user.google(); await flush(true);
-            if (r === 'linked') { toast('Pronto! Seu café agora fica salvo na sua conta Google'); openSettings(); }
-            else if (r === 'switched') { toast('Abrindo o café da sua conta…'); setTimeout(() => location.reload(), 900); }
-          } catch (e) { toast('Não foi possível entrar agora'); }
-        };
-        ar.appendChild(gb);
-      }
-      body.appendChild(ar);
-      if (G.user.isAnonymous()) body.appendChild(h('p', 'sub', 'Entre com Google para jogar no celular e no computador com o mesmo café.'));
+      // the café belongs to the account: the same one opens on any device after signing in
+      const ar = h('div', 'setrow', `${ic('house', 'mi')} <span class="acct">${esc(G.user.email() || 'Conta Google')}</span>`);
+      const ob = h('button', 'btn ghost small', 'Sair');
+      ob.onclick = async () => { await flush(true); try { await G.user.signOut(); } catch (e) { } location.reload(); };
+      ar.appendChild(ob); body.appendChild(ar);
     }
     const xr = h('div', 'setrow', `${ic('box', 'mi')} Levar meu café`);
     const xb = h('div', 'seg');

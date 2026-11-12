@@ -4,6 +4,7 @@ import { now, wall, setClock, uid, emit } from './util.js';
 import { DIRS, doorY } from './path.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 import { connectFirebase } from './net-firebase.js';
+import { loginScreen, takenOverScreen } from './login.js';
 
 export const G = {
   S: null,            // the player's saved state
@@ -141,28 +142,35 @@ export const save = () => { dirty = true; };
 // (and always when the tab is hidden or closed); this device keeps saving every few seconds.
 const REMOTE_GAP = 30000;
 let remoteDirty = false, lastRemote = 0;
+// device copy: one per account on GitHub Pages (two people on one phone never share a café); the plain key elsewhere
+const LEGACY_KEY = 'cafecantinho4';
+let localKey = LEGACY_KEY;
+// the same café open on two devices or tabs: the newest session wins and the older one stops saving
+let claimed = false;
 export async function flush(force) {
   if ((!dirty && !force && !remoteDirty) || !G.S) return;
   if (dirty || force) {
     dirty = false; G.S.lastSeen = wall(); G.S.t = now();
-    try { localStorage.setItem('cafecantinho4', JSON.stringify(G.S)); } catch (e) { }
+    try { localStorage.setItem(localKey, JSON.stringify(G.S)); } catch (e) { }
     remoteDirty = true;
   }
   if (!G.docRef || !remoteDirty) return;
   if (!force && G.net === 'firebase' && Date.now() - lastRemote < REMOTE_GAP) return;
   remoteDirty = false; lastRemote = Date.now();
-  try { await G.docRef.set({ ...G.S, owner: G.me }); } catch (e) { remoteDirty = true; }
+  const ref = G.docRef;
+  try { await ref.set(G.sess ? { ...G.S, owner: G.me, sess: G.sess } : { ...G.S, owner: G.me }); claimed = true; } catch (e) { remoteDirty = true; }
 }
 setInterval(flush, 3000);
 addEventListener('pagehide', () => flush(true));
 document.addEventListener('visibilitychange', () => { if (document.hidden) flush(true); });
 
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsJson = k => { try { return JSON.parse(lsGet(k)); } catch (e) { return null; } };
 function docData(d) { if (!d) return null; if (typeof d.data === 'function') return d.data(); if (d.data !== undefined) return d.data; return d; }
 export function docsOf(snap) { const arr = snap?.docs || snap || []; return Array.from(arr).map(d => ({ id: d.id || d.path?.split('/').pop(), data: docData(d) })); }
 
 export async function load() {
-  let local = null;
-  try { local = JSON.parse(localStorage.getItem('cafecantinho4')); } catch (e) { }
+  let local = lsJson(LEGACY_KEY), noNet = false;
   let remote = null, isNew = false;
   const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   try {
@@ -175,25 +183,44 @@ export async function load() {
         remote = docData(await withTimeout(G.docRef.get(), 6000));
       }
     } else if (FIREBASE_CONFIG && !/[?&]offline/.test(location.search)) {   // ?offline: local testing without touching the live database
-      // outside claude.ai: the same social features through Firebase (anonymous login, Google optional)
-      const r = await withTimeout(connectFirebase(FIREBASE_CONFIG), 10000);
-      if (r) { G.db = r.db; G.user = r.user; G.net = 'firebase'; }
-      if (G.user) G.me = await G.user.id();
-      if (G.db && G.me) {
+      // outside claude.ai: an account is required (e-mail, Google); the café lives in Firestore under that account
+      const r = await withTimeout(connectFirebase(FIREBASE_CONFIG), 15000);
+      if (!r) {
+        // no connection: a device that already signed in keeps playing from its copy; a new one has to wait
+        const last = lsGet('cc_last_uid'), mine = last && lsJson(LEGACY_KEY + ':' + last);
+        if (!mine) { noNet = true; throw new Error('offline'); }
+        localKey = LEGACY_KEY + ':' + last; local = mine;
+      } else {
+        const before = r.account.user();
+        const legacy = lsJson(LEGACY_KEY);
+        if (!before || before.anonymous) await loginScreen(r.account, { hasCafe: !!(before || (legacy && legacy.items)) });
+        G.db = r.db; G.user = r.user; G.net = 'firebase'; G.me = await G.user.id(); G.sess = uid();
+        localKey = LEGACY_KEY + ':' + G.me;
+        try { localStorage.setItem('cc_last_uid', G.me); } catch (e) { }
         G.docRef = G.db.doc('cafes/' + G.me);
-        remote = docData(await withTimeout(G.docRef.get(), 6000));
+        remote = docData(await withTimeout(G.docRef.get(), 8000));
+        local = lsJson(localKey);
+        // an account with no café yet takes the one this device was playing before accounts existed
+        if (!(remote && remote.items) && !local) {
+          let carry = null;
+          if (before && before.anonymous && before.uid !== G.me) carry = docData(await withTimeout(G.db.doc('cafes/' + before.uid).get(), 6000));
+          local = (carry && carry.items) ? carry : legacy;
+          if (local) { try { localStorage.removeItem(LEGACY_KEY); } catch (e) { } }
+        }
+        // the newest session wins: once this one has written, another session's write means it took over
+        G.docRef.onSnapshot(s => { const d = docData(s); if (claimed && d && d.sess && d.sess !== G.sess && G.docRef) { G.docRef = null; takenOverScreen(); } }, () => { });
       }
     }
-  } catch (e) { }
+  } catch (e) { if (noNet) throw new Error('Sem internet para entrar na sua conta. Confira a conexão e abra de novo.'); }
   let st;
   // work on a plain copy: data coming back from the account store may be read-only
-  if (remote && remote.items) { try { st = JSON.parse(JSON.stringify(remote)); } catch (e) { st = { ...remote }; } delete st.owner; }
+  if (remote && remote.items) { try { st = JSON.parse(JSON.stringify(remote)); } catch (e) { st = { ...remote }; } delete st.owner; delete st.sess; }
   else { st = local; isNew = !local; }
   if (!st || st.v !== 4) isNew = true;
   G.S = migrate(st);
   if (!G.S.world || typeof G.S.world !== 'object') G.S = { ...G.S, world: { min: 8 * 60, day: 1 } };
   G.S.lv = level(G.S);
-  if (G.docRef && !(remote && remote.v === 4)) save();
+  if (G.docRef && (G.sess || !(remote && remote.v === 4))) { save(); flush(true); }   // a new session claims the café right away
   return { isNew, online: !!(G.db && G.me) };
 }
 export function resetGame() {
