@@ -1,8 +1,8 @@
 // HUD, menus and panels
-import { speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
+import { COUNTER_CAP, MASTERY_AT, BOOSTS, boost, RECIPE_CATS, recipeCat, speedUpCost, spiceLevel, DRINK_BONUS, BONUS_TXT, drinkEnergy, ITEMS, RECIPES, recipe, keepFor, SPICES, SPICE_CATS, RARITY, MARKET_EVERY, rollMarket, inShop as inShopCfg, spice, gemsForLevel, isWallItem, canHoldWall, EQUIP, FLOORS, WALLS, EXPANSIONS, ROLES, GOALS, NAMES, GIFT_ITEMS, xpForLevel, staffCap, stoveCap, CATS, MAX_LEVEL } from './config.js';
 import { cafeQuality, qualityLabel } from './events.js';
-import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, spendEnergy, POP_MAX } from './state.js';
-import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink } from './sim.js';
+import { G, level, charm, rep, seats, save, flush, addCoins, addGems, addSpice, hasIngredients, spiceCount, addXP, activeGoals, goalProgress, claimable, resetGame, docsOf, migrate, energy, spendEnergy, POP_MAX, stars, masteryCount, boostCount, addBoost } from './state.js';
+import { cookState, burnLeft, spoiled, freshLeft, discardStock, queueCook, cancelCook, discardFood, collect, serveDirect, syncStaff, randLook, makeWorld, layoutChanged, serves, serveDrink, useBoost, dishLeft, portionsOf } from './sim.js';
 import { esc, fmtTime, pick, uid, today, on, now } from './util.js';
 import { thumbItem, thumbFood, thumbChar } from './three/thumbs.js';
 import { swatch } from './three/textures.js';
@@ -18,6 +18,12 @@ const $ = id => document.getElementById(id);
 // ---------------- SVG icons (illustrated, no emoji) ----------------
 // kawaii icon set: soft brown outline, flat pastel fills, rounded joins, a white shine; faces on the friendly ones
 export const ICON = {
+  b_sal: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.6h8l1 11.2a1.4 1.4 0 0 1-1.4 1.4H8.4A1.4 1.4 0 0 1 7 19.8z" fill="#eef4f7" stroke="#8a6248" stroke-width="1.4"/><path d="M8.4 8.6c0-3.2 1.6-5 3.6-5s3.6 1.8 3.6 5" fill="#b4d8f2" stroke="#8a6248" stroke-width="1.4"/><circle cx="10.6" cy="5.6" r=".6" fill="#8a6248"/><circle cx="13.4" cy="5.6" r=".6" fill="#8a6248"/><circle cx="12" cy="4.4" r=".6" fill="#8a6248"/><path d="M10 15.4c.6.6 1.4.9 2 .9s1.4-.3 2-.9" stroke="#8a6248" stroke-width="1.2"/><circle cx="9.6" cy="13.2" r=".7" fill="#8a6248"/><circle cx="14.4" cy="13.2" r=".7" fill="#8a6248"/><path d="M18.6 3.4l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z" fill="#ffdf8e" stroke="#8a6248" stroke-width=".9"/></svg>`,
+  b_pimenta: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15.6 6.2c-3.6.2-9 4.6-10.8 12.6-.2 1 .8 1.6 1.6 1 6.4-4.6 11.8-7 11.2-11.4" fill="#f6b3b8" stroke="#8a6248" stroke-width="1.4"/><path d="M15.6 6.2c1.4-.6 2.6 0 2.6 2" fill="#a8dcc6" stroke="#8a6248" stroke-width="1.4"/><path d="M16.4 6c.2-1.4 1-2.4 2.4-2.6" stroke="#8a6248" stroke-width="1.4"/><circle cx="11" cy="12.4" r=".7" fill="#8a6248"/><circle cx="13.6" cy="11" r=".7" fill="#8a6248"/><path d="M11.8 14.2c.8.2 1.6-.2 2-.8" stroke="#8a6248" stroke-width="1.2"/><path d="M8.6 14.6c.4-1 1-1.8 1.8-2.4" stroke="#fff" stroke-width="1.2" opacity=".8"/></svg>`,
+  b_tomilho: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V5" stroke="#8a6248" stroke-width="1.4"/><g fill="#a8dcc6" stroke="#8a6248" stroke-width="1.4"><ellipse cx="9.2" cy="8" rx="2.4" ry="1.3" transform="rotate(30 9.2 8)"/><ellipse cx="14.8" cy="10" rx="2.4" ry="1.3" transform="rotate(-30 14.8 10)"/><ellipse cx="9.2" cy="13" rx="2.4" ry="1.3" transform="rotate(30 9.2 13)"/><ellipse cx="14.8" cy="15.6" rx="2.4" ry="1.3" transform="rotate(-30 14.8 15.6)"/><ellipse cx="12" cy="4.6" rx="1.3" ry="2"/></g><path d="M18.4 3.6 16.6 6.6h1.6l-.8 2.6 2.4-3.4h-1.6z" fill="#ffdf8e" stroke="#8a6248" stroke-width=".9"/></svg>`,
+  b_tomilho6: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 21V5" stroke="#8a6248" stroke-width="1.4"/><g fill="#7cc3a6" stroke="#8a6248" stroke-width="1.4"><ellipse cx="7.4" cy="8" rx="2.3" ry="1.2" transform="rotate(30 7.4 8)"/><ellipse cx="12.6" cy="10" rx="2.3" ry="1.2" transform="rotate(-30 12.6 10)"/><ellipse cx="7.4" cy="13" rx="2.3" ry="1.2" transform="rotate(30 7.4 13)"/><ellipse cx="12.6" cy="15.6" rx="2.3" ry="1.2" transform="rotate(-30 12.6 15.6)"/></g><circle cx="17.4" cy="16.4" r="4.4" fill="#ffc98a" stroke="#8a6248" stroke-width="1.4"/><path d="M18 13.2 15.8 17h1.8l-.6 2.6 2.6-3.8h-1.8z" fill="#fff3c4" stroke="#8a6248" stroke-width="1"/></svg>`,
+  b_instant: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7.6 9.4h8.8v9.4a2.2 2.2 0 0 1-2.2 2.2H9.8a2.2 2.2 0 0 1-2.2-2.2z" fill="#cfc0ec" stroke="#8a6248" stroke-width="1.4"/><rect x="7" y="6.6" width="10" height="2.8" rx="1" fill="#f6b3b8" stroke="#8a6248" stroke-width="1.4"/><path d="M9.4 14.4h5.2" stroke="#fff" stroke-width="1.6" opacity=".8"/><path d="M12 11.6l.7 1.6 1.7.2-1.3 1.1.4 1.7-1.5-.9-1.5.9.4-1.7-1.3-1.1 1.7-.2z" fill="#ffdf8e" stroke="#8a6248" stroke-width=".9"/><path d="M5 4.6l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5zM18.8 2.8l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5z" fill="#ffdf8e" stroke="#8a6248" stroke-width=".8"/></svg>`,
+  b_salvia: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.6C5.6 17 4.6 9.8 8 4.6c.8 2.4 3 3 4 3s3.2-.6 4-3c3.4 5.2 2.4 12.4-4 16z" fill="#c3dba6" stroke="#8a6248" stroke-width="1.4"/><path d="M12 20.6V9.4M12 13l-2.4-1.8M12 16l2.6-2" stroke="#8a6248" stroke-width="1.4"/><path d="M17.6 15.2c.9-.9 2.4-.9 2.4.6 0 1.4-2.4 2.8-2.4 2.8s-2.4-1.4-2.4-2.8c0-1.5 1.5-1.5 2.4-.6z" fill="#f6b3b8" stroke="#8a6248" stroke-width="1"/></svg>`,
   bolt: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.6" fill="#ffc98a" stroke="#8a6248" stroke-width="1.4"/><path d="M13.4 4.8 8 13h3.6l-1.2 6.2L16 11h-3.8z" fill="#fff3c4" stroke="#8a6248" stroke-width="1.3"/><ellipse cx="8.2" cy="7.4" rx="1.6" ry=".9" fill="#fff" opacity=".8" transform="rotate(-30 8.2 7.4)"/></svg>`,
   coin: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12.8" r="9.4" fill="#e9b04a" stroke="#8a6248" stroke-width="1.4"/><circle cx="12" cy="11.6" r="9.4" fill="#ffd56b" stroke="#8a6248" stroke-width="1.4"/><circle cx="12" cy="11.6" r="6.6" fill="#ffe59a" stroke="#e9b04a" stroke-width="1.1"/><circle cx="9.91" cy="11.40" r="0.71" fill="#8a6248"/><circle cx="14.09" cy="11.40" r="0.71" fill="#8a6248"/><path d="M11.05 12.63q0.95 0.85 1.90 0" stroke="#8a6248" stroke-width="1.04"/><ellipse cx="8.58" cy="12.73" rx="1.04" ry="0.66" fill="#f49ba8" opacity=".85"/><ellipse cx="15.42" cy="12.73" rx="1.04" ry="0.66" fill="#f49ba8" opacity=".85"/><ellipse cx="7.6" cy="6.8" rx="1.82" ry="1.04" fill="#fff" opacity=".85" transform="rotate(-30 7.6 6.8)"/></svg>`,
   gem: `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 4h11.6l4 5.2L12 21 2.2 9.2z" fill="#9ee0cc" stroke="#8a6248" stroke-width="1.4"/><path d="M6.2 4 2.2 9.2h19.6L17.8 4z" fill="#c9f2e5" stroke="#8a6248" stroke-width="1.4"/><path d="M8.4 9.2 12 4l3.6 5.2" stroke="#8a6248" stroke-width="1.1"/><circle cx="10.35" cy="13.20" r="0.56" fill="#8a6248"/><circle cx="13.65" cy="13.20" r="0.56" fill="#8a6248"/><path d="M11.25 14.17q0.75 0.68 1.50 0" stroke="#8a6248" stroke-width="0.83"/><ellipse cx="9.30" cy="14.25" rx="0.83" ry="0.52" fill="#f49ba8" opacity=".85"/><ellipse cx="14.70" cy="14.25" rx="0.83" ry="0.52" fill="#f49ba8" opacity=".85"/><ellipse cx="7.4" cy="6.4" rx="1.40" ry="0.80" fill="#fff" opacity=".85" transform="rotate(-30 7.4 6.4)"/></svg>`,
@@ -341,14 +347,17 @@ export function openEquip(it) {
     openPanel(d.n, 'clock', body => {
       body.appendChild(h('p', 'sub', `O ${R.n.toLowerCase()} ficou tempo demais no fogo e queimou. Descarte para liberar o equipamento.`));
       const acts = h('div', 'acts');
-      const b = h('button', 'btn', 'Descartar'); b.onclick = () => { discardFood(w, it); closePanel(); };
-      acts.appendChild(b); body.appendChild(acts);
+      const b = h('button', 'btn ghost', 'Descartar'); b.onclick = () => { discardFood(w, it); closePanel(); };
+      const sv = h('button', 'btn', `${ic('b_salvia', 'bi')} Salvar com Sálvia (${boostCount('salvia')})`);
+      sv.onclick = () => { if (boostCount('salvia') > 0) { if (useBoost(w, it, 'salvia') === 'ok') { closePanel(); toast(`${R.n} foi salvo! Já pode ir para o balcão`); } } else openShelf(it, w); };
+      acts.append(b, sv); body.appendChild(acts);
     }, { small: true });
     return;
   }
   if (state === 'ready') {
     const r = collect(w, it);
-    if (r === 'nocounter') toast('Precisa de um balcão livre (ou com o mesmo prato)');
+    if (r === 'nocounter') toast(`Precisa de um balcão livre (cada balcão guarda até ${COUNTER_CAP} porções)`);
+    else if (r === 'partial') toast(`Balcões cheios: ${dishLeft(w.st, it)} porções esperam no fogão`);
     return;
   }
   if (it.pending && !it.cook) {
@@ -367,8 +376,9 @@ export function openEquip(it) {
     const R = recipe(it.cook.r), left = R.t - (now() - it.cook.s) / 1000;
     openPanel(d.n, 'clock', body => {
       const row = h('div', 'cookrow'); row.appendChild(thumbFood(R.id, 64));
-      row.appendChild(h('div', '', `<div class="cname">${R.n}</div><div class="cdesc">Fica pronto em <b id="cdLeft">${fmtTime(left)}</b><br>Rende ${R.por} porções · retire antes que queime</div>`));
+      row.appendChild(h('div', '', `<div class="cname">${R.n}</div><div class="cdesc">Fica pronto em <b id="cdLeft">${fmtTime(left)}</b><br>Rende ${portionsOf(w.st, it)} porções${it.cook.b ? ' (com ' + boost(it.cook.b).n + ')' : ''}</div>`));
       body.appendChild(row);
+      const tb = h('button', 'btn ghost shelfbtn', `${ic('b_tomilho', 'bi')} Prateleira de temperos`); tb.onclick = () => openShelf(it, w); body.appendChild(tb);
       const bar = h('div', 'pbar', '<i></i>'); body.appendChild(bar);
       const upd = () => { const l2 = R.t - (now() - it.cook.s) / 1000; if (!$('cdLeft')) return; $('cdLeft').textContent = fmtTime(l2); bar.firstChild.style.width = Math.min(100, (1 - l2 / R.t) * 100) + '%'; if (l2 > 0) requestAnimationFrame(upd); else closePanel(); };
       upd();
@@ -421,7 +431,7 @@ export function openEquip(it) {
       const locked = R.lv > l, need = R.need && spice(R.need.id), ok = hasIngredients(R, S);
       const needTxt = need ? `<br><span class="${ok ? 'okneed' : 'noneed'}">Precisa de ${R.need.n || 1}× ${need.n} · tem ${spiceCount(R.need.id, S)}</span>` : '';
       grid.appendChild(card(thumbFood(R.id, 60), R.n,
-        locked ? `${ic('lock', 'mi')} Nível ${R.lv}` : `${ic('clock', 'mi')}${fmtTime(R.t)} · ${R.por} porções<br>${ic('coin', 'mi')}${R.price} cada · +${R.xp} xp` + needTxt,
+        locked ? `${ic('lock', 'mi')} Nível ${R.lv}` : `${starRow(R.id)}<br>${ic('clock', 'mi')}${fmtTime(R.t)} · ${Math.round(R.por * (1 + stars(R.id) * .05))} porções<br>${ic('coin', 'mi')}${R.price} cada · +${R.xp} xp` + needTxt,
         locked ? 'Bloqueado' : !ok ? 'Falta ingrediente' : `Preparar ${price(R.cost)}`, {
           locked, disabled: locked || !ok || S.coins < R.cost,
           onClick: () => { const r = queueCook(w, it, R.id); if (r === 'ok') { closePanel(); toast(`${chefName} vai preparar ${R.n.toLowerCase()}`); } else if (r === 'ingredient') toast('Falta o ingrediente especial. Compre na loja, aba Especiais.'); },
@@ -451,17 +461,52 @@ export function openCounter(it) {
     body.appendChild(acts);
   }, { small: true });
 }
-export function openRecipes() {
+const starRow = rid => { const n = stars(rid); return `<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`; };
+const masteryTxt = rid => { const n = stars(rid); return n >= 5 ? 'Domínio máximo' : `${masteryCount(rid)}/${MASTERY_AT[n]} preparos para a ${n + 1}ª estrela`; };
+// Recipe book: every dish and drink, filtered by cooking time, with mastery stars
+export function openRecipes(cat = 'all') {
   const l = level(G.S);
-  openPanel('Cardápio', 'book', body => {
-    body.appendChild(h('p', 'sub', 'Todas as receitas do café. Novas receitas são liberadas conforme você sobe de nível.'));
+  openPanel('Livro de receitas', 'book', body => {
+    tabs(body, RECIPE_CATS, cat, k => openRecipes(k));
+    body.appendChild(h('p', 'sub', 'Cada estrela de domínio rende 5% mais porções e XP. Prepare um prato várias vezes para ganhar estrelas. Pratos longos continuam no fogo com o jogo fechado.'));
+    const tb = h('button', 'btn ghost shelfbtn', `${ic('b_tomilho', 'bi')} Prateleira de temperos`); tb.onclick = () => openShelf(); body.appendChild(tb);
+    const list = RECIPES.filter(R => cat === 'all' || recipeCat(R) === cat).sort((a, b) => (a.lv > l) - (b.lv > l) || a.lv - b.lv || a.t - b.t);
     const grid = h('div', 'grid'); body.appendChild(grid);
-    for (const R of RECIPES) {
+    for (const R of list) {
       const locked = R.lv > l;
-      grid.appendChild(card(thumbFood(R.id, 60), R.n, `${EQUIP[R.eq]}${R.drink ? ' · servida na hora' : ''}<br>${ic('clock', 'mi')}${fmtTime(R.t)} · ${ic('coin', 'mi')}${R.price}/porção` + (locked ? `<br>${ic('lock', 'mi')} Nível ${R.lv}` : ''), null, { locked }));
+      grid.appendChild(card(thumbFood(R.id, 60), R.n,
+        (locked ? `${ic('lock', 'mi')} Nível ${R.lv}<br>` : R.drink ? '' : `${starRow(R.id)}<br><small>${masteryTxt(R.id)}</small><br>`) +
+        `${EQUIP[R.eq]}${R.drink ? ' · servida na hora' : ''}<br>${ic('clock', 'mi')}${fmtTime(R.t)} · ${R.por} porções · ${ic('coin', 'mi')}${R.price}/porção`, null, { locked }));
+    }
+    if (!list.length) body.appendChild(h('p', 'sub', 'Nenhuma receita aqui ainda.'));
+  });
+}
+// Spice shelf: buy boosts, and use one on the dish of equipment `it` (when opened from a stove)
+export function openShelf(it = null, w = G.world) {
+  const S = G.S;
+  openPanel('Prateleira de temperos', 'b_tomilho', body => {
+    body.appendChild(h('p', 'sub', it ? 'Toque em <b>Usar</b> para temperar o prato deste fogão.' : 'Para usar um tempero, toque no fogão com o prato e abra a prateleira por lá.'));
+    const st = it ? cookState(it) : null;
+    const grid = h('div', 'grid'); body.appendChild(grid);
+    for (const B of BOOSTS) {
+      const have = boostCount(B.id);
+      const fits = !!it && it.cook && (B.use === 'burnt' ? st === 'burnt' : st === 'cooking' && !(B.pct && it.cook.b));
+      const cost = B.gems ? `${ic('gem', 'mi')}${B.gems}` : price(B.coins);
+      const c = card(h('span', 'bigic', ICON['b_' + B.id]), B.n, `${B.d}<br><b>Você tem ${have}</b>`, null);
+      const acts = h('div', 'bacts');
+      if (it) {
+        const u = h('button', 'cbtn', 'Usar'); u.disabled = !fits || have <= 0;
+        u.onclick = () => { if (useBoost(w, it, B.id) === 'ok') { toast(`${B.n}: pronto!`); closePanel(); refreshHUD(); } };
+        acts.appendChild(u);
+      }
+      const buy = h('button', 'cbtn ghost', `+1 ${cost}`); buy.title = 'Comprar 1';
+      buy.disabled = B.gems ? (S.gems || 0) < B.gems : S.coins < B.coins;
+      buy.onclick = () => { if (B.gems) addGems(-B.gems); else addCoins(-B.coins); addBoost(B.id, 1); save(); sfx('coin'); openShelf(it, w); };
+      acts.appendChild(buy); c.appendChild(acts); grid.appendChild(c);
     }
   });
 }
+on('mastery', m => { const R = recipe(m.rid); toast(`${'★'.repeat(m.stars)} ${R.n}: nova estrela! +${m.coins} moedas` + (m.gift ? ` e 1 ${boost(m.gift).n}` : '')); sfx('ding'); });
 
 // ---------------- inventory ----------------
 export function openInventory(tab = 'ingr') {

@@ -1,6 +1,6 @@
 // Café simulation: customers, waiters, chefs, cooking and economy
-import { ITEMS, RECIPES, recipe, burnAfter, keepFor, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
-import { G, level, charm, seats, seatInfo, itemAt, rep, save, addXP, addCoins, addGems, hasIngredients, addSpice, energy, spendEnergy, addPop } from './state.js';
+import { ITEMS, RECIPES, recipe, burnAfter, keepFor, COUNTER_CAP, MASTERY_AT, BOOSTS, boost, DRINKS, DRINK_BONUS, drinkEnergy, BODIES, SKINS, HAIRS, SHIRTS, PANTS, STYLES } from './config.js';
+import { G, level, charm, seats, seatInfo, itemAt, rep, save, addXP, addCoins, addGems, hasIngredients, addSpice, energy, spendEnergy, addPop, stars, masteryBonus, addBoost, boostCount } from './state.js';
 import { findPath, standTiles, nearTiles, doorY, DIRS } from './path.js';
 import { cafeQuality } from './events.js';
 const SIDEWALK = n => n + 1.25, PATHX = -1.0;
@@ -151,6 +151,25 @@ export function cancelCook(w, it) {
   if (s) { s.job = null; s.cookAnim = false; s.wp = []; s.target = null; s.faceTo = null; }
   return true;
 }
+// spice shelf: uses one boost on this equipment's dish. Returns 'ok' or why it can't be used.
+export function useBoost(w, it, id) {
+  const B = boost(id); if (!B || !w.own) return 'no';
+  if (boostCount(id) <= 0) return 'none';
+  const st = cookState(it);
+  if (B.use === 'burnt') {
+    if (st !== 'burnt') return 'notburnt';
+    const R = recipe(it.cook.r); it.cook.s = now() - R.t * 1000;   // back to "just finished", with the full wait before burning
+  } else {
+    if (st !== 'cooking') return 'notcooking';
+    const R = recipe(it.cook.r);
+    if (B.pct) { if (it.cook.b) return 'already'; it.cook.b = id; }
+    else { const left = R.t - (now() - it.cook.s) / 1000; it.cook.s -= Math.min(left, B.cut) * 1000; }
+  }
+  addBoost(id, -1);
+  addFloat(w, it.x + .5, it.y + .5, 80, '✨ ' + B.n, 'xp');
+  emit('sound', 'ding'); save();
+  return 'ok';
+}
 // throws away a dish that burned on the equipment
 export function discardFood(w, it) {
   it.cook = null; it.last = null;
@@ -158,18 +177,50 @@ export function discardFood(w, it) {
 }
 export function targetCounter(st, rid) {
   const cs = st.items.filter(i => i.type === 'counter');
-  return cs.find(c => c.stock && c.stock.r === rid && c.stock.left > 0 && !spoiled(c)) || cs.find(c => !c.stock || c.stock.left <= 0);
+  return cs.find(c => c.stock && c.stock.r === rid && c.stock.left > 0 && c.stock.left < COUNTER_CAP && !spoiled(c)) || cs.find(c => !c.stock || c.stock.left <= 0);
+}
+// portions a dish yields: recipe × (1 + mastery stars × 5% + spice-shelf salt/pepper)
+export function portionsOf(st, it) {
+  const R = recipe(it.cook.r), b = it.cook.b && boost(it.cook.b);
+  return Math.max(1, Math.round(R.por * (1 + masteryBonus(R.id, st) + (b && b.pct || 0))));
+}
+// portions still on the stove (a big dish can need several counters; the rest waits, and can still burn)
+export const dishLeft = (st, it) => it.cook ? (Number.isFinite(it.cook.left) ? it.cook.left : portionsOf(st, it)) : 0;
+// Takes as many portions off the stove as fit on counter cnt. The first take pays the XP and counts for mastery.
+function takeFromStove(w, it, cnt) {
+  const R = recipe(it.cook.r), st = w.st;
+  const left = dishLeft(st, it), room = cnt.stock && cnt.stock.left > 0 ? Math.max(0, COUNTER_CAP - cnt.stock.left) : COUNTER_CAP;
+  const n = Math.min(left, room);
+  if (n <= 0) return 0;
+  if (!it.cook.took) { it.cook.took = 1; if (w.own) cookedReward(w, it, R); }
+  it.cook.left = left - n;
+  if (it.cook.left <= 0) it.cook = null;
+  return n;
+}
+// XP (+5% per mastery star) and the mastery count; a new star pays coins and, on stars 2 and 4, a spice
+function cookedReward(w, it, R) {
+  const S = G.S, before = stars(R.id), xp = Math.round(R.xp * (1 + masteryBonus(R.id)));
+  addXP(xp); S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + xp, 'xp');
+  S.mastery[R.id] = (S.mastery[R.id] || 0) + 1;
+  const after = stars(R.id);
+  if (after > before) {
+    const coins = Math.round(R.cost * after);
+    addCoins(coins);
+    const gift = after === 2 ? 'tomilho' : after === 4 ? 'pimenta' : after === 5 ? 'instant' : null;
+    if (gift) addBoost(gift, 1);
+    emit('mastery', { rid: R.id, stars: after, coins, gift });
+  }
 }
 // moves finished food from equipment onto a counter
 export function collect(w, it) {
   if (cookState(it) === 'burnt') return 'burnt';
   if (cookState(it) !== 'ready') return 'notready';
-  const R = recipe(it.cook.r), c = targetCounter(w.st, R.id);
-  if (!c) return 'nocounter';
-  putOnCounter(c, R.id, R.por);
-  it.cook = null;
-  if (w.own) { addXP(R.xp); G.S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + R.xp, 'xp'); emit('sound', 'ding'); save(); }
-  return 'ok';
+  const R = recipe(it.cook.r);
+  let moved = 0, c;
+  while (it.cook && (c = targetCounter(w.st, R.id))) { const n = takeFromStove(w, it, c); if (!n) break; putOnCounter(c, R.id, n); moved += n; }
+  if (!moved) return 'nocounter';
+  if (w.own) { emit('sound', 'ding'); save(); }
+  return it.cook ? 'partial' : 'ok';
 }
 function putOnCounter(c, rid, n) {
   if (c.stock && c.stock.r === rid && c.stock.left > 0 && !spoiled(c)) {
@@ -582,9 +633,10 @@ function ownerAI(w, s) {
 }
 // A ready dish moved straight from its equipment to a counter (with a sparkle), when no path exists.
 function magicPlate(w, it, cnt) {
-  const R = recipe(it.cook.r);
-  putOnCounter(cnt, R.id, R.por); it.cook = null;
-  if (w.own) { addXP(R.xp); G.S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + R.xp, 'xp'); addFloat(w, cnt.x + .5, cnt.y + .5, 60, '✨', 'xp'); save(); emit('sound', 'ding'); }
+  const R = recipe(it.cook.r), n = takeFromStove(w, it, cnt);
+  if (!n) return;
+  putOnCounter(cnt, R.id, n);
+  if (w.own) { addFloat(w, cnt.x + .5, cnt.y + .5, 60, '✨', 'xp'); save(); emit('sound', 'ding'); }
 }
 function magicServe(w, s, c, picked) {
   s.wp = []; s.target = null; c.waiter = s.id;
@@ -666,8 +718,10 @@ function jobArrive(w, s) {
       if (!cnt) { s.job = null; return; }
       // walled in with the stoves and no way to a counter: the dish reaches it anyway, never left to burn
       if (!route(w, s, { kind: 'item', id: cnt.id })) { magicPlate(w, it, cnt); s.job = null; s.idleT = 1; return; }
-      s.carry = R.id; s.carryN = R.por; it.cook = null; j.phase = 'toCounter'; j.counter = cnt.id;
-      if (w.own) { addXP(R.xp); G.S.stats.cooked++; addFloat(w, it.x + .5, it.y + .5, 70, '+' + R.xp, 'xp'); save(); }
+      const n = takeFromStove(w, it, cnt);
+      if (!n) { s.job = null; return; }
+      s.carry = R.id; s.carryN = n; j.phase = 'toCounter'; j.counter = cnt.id;
+      if (w.own) save();
     } else {
       const cnt = st.items.find(i => i.id === j.counter && (!i.stock || i.stock.r === s.carry)) || targetCounter(st, s.carry);
       if (cnt) { putOnCounter(cnt, s.carry, s.carryN); s.carry = null; s.job = null; s.idleT = 1; if (w.own) save(); }

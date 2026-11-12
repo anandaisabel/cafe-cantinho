@@ -55,7 +55,7 @@ já faz e organiza o que falta em fases. Nenhuma fase apaga o que já funciona, 
 2. **Tempo real com o jogo fechado (2, 17).** ✅ Feita: 7 receitas de 2 h a 96 h.
    - Fogões e energia contam pelo relógio do mundo: início, fim e vencimento salvos.
    - Clientes e equipe continuam parados com o jogo fechado.
-3. **Cozinha (2, 3, 4, 5, 13).**
+3. **Cozinha (2, 3, 4, 5, 13).** ✅ Feita (menos as 115 receitas: hoje são 32; desbloqueio por moedas, diamantes e VIP fica para depois).
    - Receitas longas, de 3 min a 96 h, chegando a 115 aos poucos.
    - Livro com filtros, domínio em 5 estrelas e prateleira de temperos.
    - Começar com 2 fogões e balcões de ~50 porções.

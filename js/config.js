@@ -220,6 +220,24 @@ export const xpForLevel = l => Math.round(20 * (l - 1) * (l - 1) + 20 * (l - 1))
 export const staffCap = l => 1 + Math.ceil(l / 2);
 // Café Grana handed out at level milestones: rare on purpose, so it keeps its value
 export const gemsForLevel = l => (l % 3 === 0 ? 2 : l % 2 === 0 ? 1 : 0);
+// ---- kitchen (documento mestre §3, §5, §13) ----
+export const COUNTER_CAP = 50;                       // portions one counter holds; the rest waits on the stove
+// recipe mastery: times a dish was taken off the stove for each star (1..5); each star adds 5% portions and XP
+export const MASTERY_AT = [5, 15, 35, 70, 120];
+export const MASTERY_BONUS = .05;
+// spice shelf: one-off boosts used on a dish on the stove. cut = seconds taken off the cooking time (Infinity = done now)
+export const BOOSTS = [
+  { id: 'sal',      n: 'Sal Turbinado',          d: '+5% de porções no prato que está no fogo.',  use: 'cooking', pct: .05, coins: 150 },
+  { id: 'pimenta',  n: 'Pimenta Poderosa',       d: '+10% de porções no prato que está no fogo.', use: 'cooking', pct: .10, coins: 400 },
+  { id: 'tomilho',  n: 'Tomilho Acelerador',     d: 'Tira 1 hora do preparo.',                    use: 'cooking', cut: 3600, coins: 250 },
+  { id: 'tomilho6', n: 'Tomilho Ultrarrápido',   d: 'Tira 6 horas do preparo.',                   use: 'cooking', cut: 21600, gems: 2 },
+  { id: 'instant',  n: 'Condimento Instantâneo', d: 'Termina o preparo na hora.',                 use: 'cooking', cut: Infinity, gems: 3 },
+  { id: 'salvia',   n: 'Sálvia Salvadora',       d: 'Recupera um prato queimado.',                use: 'burnt', gems: 2 },
+];
+export const boost = id => BOOSTS.find(b => b.id === id);
+// recipe book filters, by cooking time
+export const RECIPE_CATS = [['all', 'Todas'], ['quick', 'Rápidas'], ['mid', 'Médias'], ['long', 'Longas'], ['special', 'Especiais'], ['drink', 'Bebidas']];
+export const recipeCat = R => R.drink ? 'drink' : R.t < 1800 ? 'quick' : R.t < 6 * 3600 ? 'mid' : R.t < 24 * 3600 ? 'long' : 'special';
 export const burnAfter = R => Math.max(180, (R.burn || Math.max(25, R.t * .6)) * 3);   // seconds a ready dish waits on the stove before burning (3×, at least 3 min)
 // seconds a batch stays good on the counter; every fridge in the café keeps it fresh for longer
 export const fridgeBonus = st => 1 + Math.min(.75, (st && st.items ? st.items.filter(i => i.type === 'fridge').length : 0) * .25);

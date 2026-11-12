@@ -519,3 +519,14 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .login.busy .lcard{opacity:.7;pointer-events:none}
 .setrow .acct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;display:inline-block;vertical-align:middle}
 .login .lgoogle svg{width:20px!important;height:20px!important;flex:none}
+
+/* ======================= KITCHEN: mastery stars, spice shelf ======================= */
+.stars{color:#f2be55;letter-spacing:1px;font-size:14px;text-shadow:0 1px 0 #c9a684}
+.stars i{font-style:normal;color:#e9d6bd;text-shadow:none}
+.card .bacts{display:flex;gap:6px;width:100%;margin-top:auto}
+.card .bacts .cbtn{flex:1;min-width:0;padding-left:4px;padding-right:4px}
+.shelfbtn{width:100%;margin:6px 0 4px}
+.btn .bi svg,.shelfbtn .bi svg{width:22px;height:22px;display:block}
+.card .bacts .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:3px}
+.card .bacts .cbtn .mi{flex:none;width:16px;height:16px;display:inline-block}
+.card .bacts .cbtn .mi svg{width:16px;height:16px;display:block}

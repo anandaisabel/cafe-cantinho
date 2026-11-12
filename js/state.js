@@ -1,5 +1,5 @@
 // Game state, derived values and persistence (device + account)
-import { START_SIZE, START_COINS, ITEMS, xpForLevel, GOALS, gemsForLevel, isWallItem, canHoldWall, energyMax, ENERGY_REGEN_S } from './config.js';
+import { START_SIZE, START_COINS, ITEMS, xpForLevel, GOALS, gemsForLevel, isWallItem, canHoldWall, energyMax, ENERGY_REGEN_S, MASTERY_AT, MASTERY_BONUS } from './config.js';
 import { now, wall, setClock, uid, emit } from './util.js';
 import { DIRS, doorY } from './path.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
@@ -26,7 +26,7 @@ export function freshState() {
     floor: 'wood', wall: 'peach', owned: { floor: ['wood'], wall: ['peach'] },
     items: [
       I('door_wood', 0, START_SIZE - 2), I('win_classic', 1, 0), I('win_classic', 0, 2), I('sconce', 3, 0), I('sconce', 0, 1),
-      I('counter', 2, 0), I('stove', 3, 0),   // no coffee machine at the start: it is bought in the shop
+      I('counter', 2, 0), I('stove', 3, 0), I('stove', 4, 0),   // two stoves; no coffee machine at the start: it is bought in the shop
       I('table_round', 2, 2), I('chair_wood', 1, 2, 1), I('chair_wood', 3, 2, 3),
       I('table_round', 4, 4), I('chair_wood', 4, 3, 0), I('chair_wood', 5, 4, 3),
     ],
@@ -34,6 +34,7 @@ export function freshState() {
     market: { at: -1e9, seed: 1, items: [] },
     sconceMig: 1,
     energy: { v: 30, t: 0 },
+    mastery: {}, boost: { sal: 2, tomilho: 1 },
     pop: 10,
     avatar: { id: 'avatar', role: 'owner', name: 'Chef', look: { body: 'adult', model: 4 } },
     staff: [{ id: uid(), name: 'Bia', role: 'waiter', look: { body: 'adult', skin: '#f5cba7', hair: '#6b4430', style: 'bun', shirt: '#f2a7a0', pants: '#5b6b8c', model: 3 } }],
@@ -68,6 +69,8 @@ export function migrate(st) {
     { const want = Math.max(1, dy - 2); const c = near([want, want - 1, want + 1, want - 2].map(y => [0, y]).filter(([, y]) => y > 0)); if (c) st.items.push({ id: uid(), type: 'sconce', x: 0, y: c[1], rot: 0 }); }
   }
   if (!Number.isFinite(st.pop)) st.pop = Math.round(Math.min(60, 10 + (st.stats && st.stats.happy || 0) * .1) * 10) / 10;   // popularity, 0–105
+  if (!st.mastery || typeof st.mastery !== 'object') st.mastery = {};   // times each dish came off the stove
+  if (!st.boost || typeof st.boost !== 'object') st.boost = { sal: 2, tomilho: 1 };   // spice shelf
   if (!Array.isArray(st.friends)) st.friends = [];   // neighbour codes added by hand (Firebase builds)
   if (!st.energy || !Number.isFinite(st.energy.v)) st.energy = { v: energyMax(level(st)), t: st.t || 0 };   // energy for serving drinks
   // saves made before shelf life existed: treat what is on the counters as freshly placed
@@ -226,6 +229,13 @@ export async function load() {
 export function resetGame() {
   G.S = freshState(); save(); flush(true);
 }
+
+// ---- recipe mastery (0..5 stars) and the spice shelf ----
+export const masteryCount = (rid, st = G.S) => (st.mastery && st.mastery[rid]) || 0;
+export const stars = (rid, st = G.S) => MASTERY_AT.filter(n => masteryCount(rid, st) >= n).length;
+export const masteryBonus = (rid, st = G.S) => stars(rid, st) * MASTERY_BONUS;
+export const boostCount = (id, st = G.S) => (st.boost && st.boost[id]) || 0;
+export function addBoost(id, n, st = G.S) { st.boost = st.boost || {}; st.boost[id] = Math.max(0, (st.boost[id] || 0) + n); emit('hud'); }
 
 // ---- time away: stoves and energy keep going while the game is closed or hidden ----
 // Their timers are moved back by the time away, as if it had passed on the game clock. Customers, staff and
