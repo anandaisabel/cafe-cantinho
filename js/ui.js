@@ -82,7 +82,7 @@ on('servedrink', id => {
   const r = serveDrink(G.world, c);
   if (r === 'ok') { const R = recipe(c.drink), b = DRINK_BONUS[R.id] || 'coins'; toast(`${R.n} servido · ${BONUS_TXT[b]}`); refreshHUD(); return; }
   sfx('bad');
-  if (r === 'energy') { const e = energy(); toast(`Sem energia (${e.v}/${e.max}). Volta 1 a cada 90 s · próxima em ${e.next}s`); bumpEnergy(); return; }
+  if (r === 'energy') { toast(`⚡ Sem energia · volta em ${energy().next}s`); bumpEnergy(); return; }
   toast(r === 'nomachine' ? 'Compre a máquina dessa bebida na loja' : r === 'coins' ? 'Moedinhas insuficientes' : r === 'ingredient' ? 'Falta o ingrediente especial' : 'Não dá para servir agora');
 });
 // popularity meter: a face that cheers up as the café gets famous, plus the number (0–105)
@@ -103,6 +103,7 @@ export function refreshPop() {
   const el = $('popChip'); el.classList.toggle('max', p >= POP_MAX);
   if (up || down) { el.classList.remove('up', 'down'); void el.offsetWidth; el.classList.add(up ? 'up' : 'down'); }
 }
+export const energyNow = () => energy(G.S);
 export function refreshEnergy() {
   if (!$('energyTxt') || !G.S) return;
   const e = energy(G.S), txt = `${e.v}/${e.max}`;
@@ -375,7 +376,7 @@ export function openEquip(it) {
       const cost = speedUpCost(left), fast = h('button', 'btn rose', `Acelerar ⚡${cost}`);
       fast.onclick = () => {
         const l2 = R.t - (now() - it.cook.s) / 1000, c2 = speedUpCost(l2);
-        if (!spendEnergy(c2)) { const e = energy(); toast(`Falta energia (${e.v}/${e.max}). Volta 1 a cada 90 s`); bumpEnergy(); return; }
+        if (!spendEnergy(c2)) { toast(`⚡ Sem energia · volta em ${energy().next}s`); bumpEnergy(); return; }
         it.cook.s = now() - R.t * 1000; save(); sfx('ding'); closePanel(); toast(`${R.n} ficou pronto na hora!`); refreshHUD();
       };
       const ok = h('button', 'btn', 'Ok'); ok.onclick = closePanel; acts.append(b, fast, ok); body.appendChild(acts);

@@ -32,7 +32,8 @@ function wire() {
   bind('bLvl', UI.openProgress);
   bind('bOpen', UI.toggleOpen);
   bind('bShop', () => UI.openShop());
-  bind('popChip', () => UI.toast(`Popularidade ${(G.S.pop || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })} de 105 · +0,1 por cliente satisfeito, −0,3 por cliente que vai embora bravo. Quanto maior, mais clientes chegam.`));
+  bind('popChip', () => UI.toast(`😊 Fama ${(G.S.pop || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} · clientes felizes trazem mais clientes!`));
+  bind('energyChip', () => { const e = UI.energyNow(); UI.toast(e.next ? `⚡ Energia ${e.v}/${e.max} · +1 em ${e.next}s` : `⚡ Energia cheia!`); });
   bind('bEdit', () => { G.mode = 'edit'; G.placeFrom = null; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; });
   bind('bDone', () => { if (G.pending) UI.cancelPlace(); G.mode = 'play'; G.sel = null; G.drag = null; layoutChanged(G.world); UI.refreshHUD(); UI.updateToolbar(); });
   bind('bEditShop', () => UI.openShop());
