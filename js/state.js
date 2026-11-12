@@ -227,6 +227,18 @@ export function resetGame() {
   G.S = freshState(); save(); flush(true);
 }
 
+// ---- time away: stoves and energy keep going while the game is closed or hidden ----
+// Their timers are moved back by the time away, as if it had passed on the game clock. Customers, staff and
+// counters stay frozen. A dish left too long burns (burnAfter), like it would with the game open.
+export function catchUp(st, ms) {
+  if (!st || !(ms > 1000)) return 0;
+  for (const i of st.items || []) if (i.cook && Number.isFinite(i.cook.s)) i.cook.s -= ms;
+  const e = st.energy;
+  if (e && Number.isFinite(e.t) && e.v < energyMax(level(st))) e.t -= ms;
+  save();
+  return ms;
+}
+
 // ---- energy (serving drinks): refills one point per ENERGY_REGEN_S of game time ----
 export function energy(st = G.S) {
   const max = energyMax(level(st)), e = st.energy || (st.energy = { v: max, t: now() }), step = ENERGY_REGEN_S * 1000;

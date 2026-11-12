@@ -1,19 +1,24 @@
 // Small shared helpers
 // GAME CLOCK — all gameplay timers (cooking, spoiling, patience) read this.
-// It only advances while the game is actually running on screen, so closing the tab or the app
-// freezes everything exactly where it was; there is no offline simulation.
-let gameMs = 0, lastReal = Date.now();
+// It only advances while the game is actually running on screen: customers, staff and counters freeze
+// while the player is away. Stoves and energy do keep going: the time spent away is collected here
+// (takeAway) and state.catchUp moves their timers forward by it.
+let gameMs = 0, lastReal = Date.now(), away = 0, hiddenAt = 0;
 export const now = () => gameMs;                 // game time in ms, persisted with the save
 export const wall = () => Date.now();            // real-world time, for save stamps only
 export function tickClock() {
   const t = Date.now(); let d = t - lastReal; lastReal = t;
   if (!(d > 0)) d = 0;
-  if (d > 1000) d = 1000;                        // a long stall must not fast-forward the café
   if (typeof document !== 'undefined' && document.hidden) d = 0;   // game not on screen: everything waits
+  if (d > 1000) { away += d - 1000; d = 1000; }   // a long stall must not fast-forward the café (stoves catch up)
   gameMs += d;
   return gameMs;
 }
-if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { lastReal = Date.now(); });
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+  const t = Date.now(); lastReal = t;
+  if (document.hidden) hiddenAt = t; else if (hiddenAt) { away += t - hiddenAt; hiddenAt = 0; }
+});
+export function takeAway() { const a = away; away = 0; return a; }   // ms spent away since the last call
 export function advanceClock(ms) { gameMs += Math.max(0, ms); }   // debug/testing hook only
 export function setClock(ms) { gameMs = Number.isFinite(ms) && ms > 0 ? ms : 0; lastReal = Date.now(); }
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -40,6 +45,7 @@ export function alpha(hex, a) { const [r, g, b] = parse(hex); return `rgba(${r},
 export function fmtTime(s) {
   s = Math.max(0, Math.ceil(s));
   if (s < 60) return s + 's';
+  if (s >= 86400) { const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600); return d + 'd' + (h ? ' ' + h + 'h' : ''); }
   if (s < 3600) { const m = Math.floor(s / 60), r = s % 60; return m + 'min' + (r && m < 5 ? ' ' + r + 's' : ''); }
   const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
   return h + 'h' + (m ? ' ' + m + 'min' : '');

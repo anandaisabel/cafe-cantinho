@@ -262,11 +262,12 @@ function chooseOrder(w) {
   const st = w.st, lv = w.own ? level() : 99;
   const inStock = RECIPES.filter(r => !r.drink && stockOf(st, r.id).length);
   if (inStock.length) return pick(inStock).id;
-  const cooking = st.items.filter(i => i.cook && !recipe(i.cook.r).drink).map(i => i.cook.r);
+  // a guest only waits for a dish that will be ready soon (not a feijoada with two days to go)
+  const cooking = st.items.filter(i => i.cook && !recipe(i.cook.r).drink && recipe(i.cook.r).t - (now() - i.cook.s) / 1000 < 600).map(i => i.cook.r);
   if (cooking.length) return pick(cooking);
   // nothing ready or on the stove: ask for any dish the café can actually cook, and the player makes it
   const eqs = new Set(st.items.filter(i => ITEMS[i.type].kind === 'equip').map(i => ITEMS[i.type].eq));
-  const can = RECIPES.filter(r => !r.drink && r.lv <= lv && eqs.has(r.eq) && hasIngredients(r, st));
+  const can = RECIPES.filter(r => !r.drink && !r.long && r.lv <= lv && eqs.has(r.eq) && hasIngredients(r, st));
   if (!can.length) return null;
   const quick = can.filter(r => r.t <= 120);              // favour dishes that can be made while the guest waits
   return pick(quick.length && Math.random() < .75 ? quick : can).id;

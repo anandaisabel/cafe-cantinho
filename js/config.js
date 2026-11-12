@@ -53,6 +53,15 @@ export const RECIPES = [
   { id: 'matchalatte', drink: true, n: 'Matchá latte', eq: 'coffee', t: 85, cost: 38, por: 9, price: 21, burn: 45, keep: 180, xp: 15, lv: 19, need: { id: 'matcha', n: 1 } },
   { id: 'bolodeouro', n: 'Bolo folheado a ouro', eq: 'forno', t: 780,  cost: 520, por: 18, price: 64, burn: 200, keep: 720, xp: 70, lv: 20, need: { id: 'ouro', n: 1 } },
   { id: 'lasanha',    n: 'Lasanha',             eq: 'stove',   t: 1800, cost: 300, por: 40, price: 18, burn: 240, keep: 900, xp: 35, lv: 6 },
+  // long recipes (hours to days): they keep cooking while the game is closed; burn = t/3, so the dish waits on
+  // the stove as long as it took to cook before it burns (burnAfter triples it)
+  { id: 'espaguete', n: 'Espaguete à bolonhesa', eq: 'stove', t: 7200, cost: 200, por: 60, price: 16, burn: 2400, keep: 7200, xp: 45, lv: 3, long: true },
+  { id: 'pizza', n: 'Pizza margherita', eq: 'stove', t: 18000, cost: 400, por: 80, price: 18, burn: 6000, keep: 18000, xp: 80, lv: 8, long: true },
+  { id: 'pamonha', n: 'Pamonha', eq: 'stove', t: 32400, cost: 500, por: 100, price: 16, burn: 10800, keep: 32400, xp: 110, lv: 10, long: true },
+  { id: 'churrasco', n: 'Churrasco', eq: 'stove', t: 43200, cost: 700, por: 110, price: 20, burn: 14400, keep: 43200, xp: 150, lv: 12, long: true },
+  { id: 'frango', n: 'Frango assado', eq: 'stove', t: 86400, cost: 900, por: 130, price: 24, burn: 28800, keep: 86400, xp: 220, lv: 14, long: true },
+  { id: 'feijoada', n: 'Feijoada', eq: 'stove', t: 172800, cost: 1200, por: 160, price: 26, burn: 57600, keep: 172800, xp: 320, lv: 16, long: true },
+  { id: 'florestanegra', n: 'Bolo Floresta Negra', eq: 'forno', t: 345600, cost: 2000, por: 200, price: 34, burn: 115200, keep: 345600, xp: 500, lv: 20, long: true },
 ];
 
 // Special ingredients and rare goods.

@@ -7,7 +7,7 @@ import { pumpThumbs } from './three/thumbs.js';
 import { warmUp } from './three/warmup.js';
 
 import { Clock, DAY_HOUR } from './world/clock.js';
-import { G, load, save, flush } from './state.js';
+import { G, load, save, flush, catchUp } from './state.js';
 import { ITEMS as CFG_ITEMS } from './config.js';
 import { buildItem } from './three/models.js';
 import { disposeTree, cacheSizes } from './three/kit.js';
@@ -15,7 +15,7 @@ import { makeWorld, tick, layoutChanged } from './sim.js';
 import * as SIM from './sim.js';
 import { initInput } from './input.js';
 import * as UI from './ui.js';
-import { on, tickClock, setClock, advanceClock, now as nowFn } from './util.js';
+import { on, tickClock, setClock, advanceClock, takeAway, wall, now as nowFn } from './util.js';
 
 const cv = document.getElementById('cv');
 const topPad = () => (E.w < 640 ? 112 : 84), botPad = () => (E.w < 640 ? 100 : 104);
@@ -73,6 +73,7 @@ function frame(t) {
   const dt = Math.min(.05, (t - last) / 1000); last = t; window.__frames = (window.__frames || 0) + 1;
   // Gameplay time only advances while the game is on screen; closing it freezes every timer.
   tickClock();
+  { const a = takeAway(); if (a > 0) catchUp(G.S, a); }   // back from another app or tab: stoves and energy catch up
   if (G.world) {
     // CAFÉ: its own simulation (paused only in decoration mode)
     tick(G.world, dt, G.mode === 'edit' && !G.visiting);
@@ -106,6 +107,7 @@ async function boot() {
   if (!G.S.world) G.S.world = { min: 8 * 60, day: 1 };
   Clock.bind(G.S.world); Clock.set(DAY_HOUR);          // fixed, friendly daylight: no day/night cycle
   setClock(G.S.t);                                      // resume every gameplay timer where it stopped
+  catchUp(G.S, wall() - (G.S.lastSeen || wall()));      // ...except stoves and energy, which kept going while closed
   G.world = makeWorld(G.S, true);
   fitRoom(G.S.size, topPad(), botPad());
   initInput(cv);

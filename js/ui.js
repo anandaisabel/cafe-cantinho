@@ -381,7 +381,8 @@ export function openEquip(it) {
         if (!spendEnergy(c2)) { toast(`⚡ Sem energia · volta em ${energy().next}s`); bumpEnergy(); return; }
         it.cook.s = now() - R.t * 1000; save(); sfx('ding'); closePanel(); toast(`${R.n} ficou pronto na hora!`); refreshHUD();
       };
-      const ok = h('button', 'btn', 'Ok'); ok.onclick = closePanel; acts.append(b, fast, ok); body.appendChild(acts);
+      const ok = h('button', 'btn', 'Ok'); ok.onclick = closePanel; if (cost <= energy().max) acts.append(b, fast, ok); else acts.append(b, ok);   // hours-long dishes can't be rushed with energy
+      body.appendChild(acts);
     }, { small: true });
     return;
   }

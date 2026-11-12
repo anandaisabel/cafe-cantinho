@@ -48,11 +48,11 @@ já faz e organiza o que falta em fases. Nenhuma fase apaga o que já funciona, 
 
 ## Fases
 
-1. **Contas e nuvem (seção 27).**
+1. **Contas e nuvem (seção 27).** ✅ Feita.
    - Tela inicial com criar conta, entrar, recuperar senha e Google.
    - Quem já joga anônimo vira conta sem perder o café.
    - Aviso quando o mesmo café está aberto em dois aparelhos (o mais recente vence, sem duplicar compras).
-2. **Tempo real com o jogo fechado (2, 17).**
+2. **Tempo real com o jogo fechado (2, 17).** ✅ Feita: 7 receitas de 2 h a 96 h.
    - Fogões e energia contam pelo relógio do mundo: início, fim e vencimento salvos.
    - Clientes e equipe continuam parados com o jogo fechado.
 3. **Cozinha (2, 3, 4, 5, 13).**

@@ -26,8 +26,11 @@ Estas regras valem para toda tarefa neste repositório.
 ### Decisões que já foram revertidas (não reintroduzir sem pedido)
 - **Ciclo de dia e noite: desligado.** O relógio fica travado em luz de fim de manhã
   (`DAY_HOUR` em `js/world/clock.js`). O código do ciclo continua no repositório, só não avança.
-- **Sem simulação offline** (vai mudar: o documento mestre pede fogões e energia correndo com o jogo fechado;
-  aprovado só para fogões e energia; clientes e equipe continuam congelados; fase 2 de `docs/plano-documento-mestre.md`).
+- **Fogões e energia correm com o jogo fechado** (documento mestre, fase 2). Clientes, equipe e balcões continuam
+  congelados. `catchUp()` em state.js recua `cook.s` e `energy.t` pelo tempo fora: na abertura (`wall() - lastSeen`)
+  e ao voltar de outra aba/app (`takeAway()` em util.js, inclui travadas acima de 1 s). Prato esquecido queima normalmente.
+  **Receitas longas** (`long: true`, 2 h a 96 h, `burn = t/3`, então esperam no fogão o mesmo tempo que levaram):
+  clientes não pedem nem esperam por elas (`chooseOrder`); "Acelerar" some quando custaria mais que a energia máxima.
 - **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
   (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
   (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`
@@ -211,7 +214,7 @@ celular (430×760), save antigo migrando, e memória estável (`__E.renderer.inf
 ## Referência de design
 
 `docs/documento-mestre.md`: especificação completa do jogo (recebida em 2026-11-12). `docs/plano-documento-mestre.md`:
-o que já existe, conflitos e fases (fase 1, contas, feita).
+o que já existe, conflitos e fases (fases 1, contas, e 2, tempo com o jogo fechado, feitas).
 
 `docs/referencia-cafe-mania.md`: como o Café Mania funcionava (pesquisa em blogs de fãs) e o que
 ainda falta trazer. Inspiração de mecânica apenas: nunca nome, arte ou textos.

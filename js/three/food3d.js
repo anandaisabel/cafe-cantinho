@@ -96,6 +96,58 @@ const BUILD = {
     for (let i = 0; i < 4; i++) sphere(g, .008, '#c8452f', -.045 + i * .03, y + .09, (i % 2 - .5) * .03);
     const leaf = sphere(g, .016, '#4f9a3c', .02, y + .094, 0); leaf.scale.set(.02, .006, .012);
   },
+  // long recipes (hours to days)
+  espaguete(g) {
+    const y = plate(g);
+    for (let i = 0; i < 9; i++) { const a = i * .7, r = .03 + (i % 3) * .018; const t = torus(g, r, .006, '#f2d27a', { rough: .5 }); t.rotation.x = Math.PI / 2; t.position.set(Math.cos(a) * .012, y + .012 + i * .004, Math.sin(a) * .012); }
+    const sauce = sphere(g, .05, '#c4402c', 0, y + .05, 0, { rough: .35, coat: .5 }); sauce.scale.set(.05, .018, .05);
+    for (const [x, z] of [[-.025, .01], [.022, .018], [0, -.025]]) sphere(g, .016, '#7a3a22', x, y + .062, z, { rough: .6 });
+    const leaf = sphere(g, .014, '#4f9a3c', .01, y + .075, 0); leaf.scale.set(.016, .005, .01);
+  },
+  pizza(g) {
+    cyl(g, .125, .125, .014, '#e3b067', 0, 0, 0, { rough: .7 }, 28);
+    cyl(g, .108, .108, .006, '#d4472f', 0, .014, 0, { rough: .4 }, 28);
+    cyl(g, .1, .1, .005, '#f8e3a6', 0, .019, 0, { rough: .45 }, 24);
+    for (let i = 0; i < 6; i++) { const a = i * 1.05, r = i % 2 ? .06 : .035; cyl(g, .016, .016, .004, '#f4f1e6', Math.cos(a) * r, .024, Math.sin(a) * r, { rough: .4 }, 14); }
+    for (let i = 0; i < 4; i++) { const a = i * 1.6 + .4, l = sphere(g, .014, '#3f8f36', Math.cos(a) * .05, .028, Math.sin(a) * .05); l.scale.set(.016, .004, .01); }
+  },
+  pamonha(g) {
+    const y = plate(g);
+    for (const [x, ry] of [[-.035, .25], [.035, -.2]]) {
+      const p = new THREE.Group(); p.position.set(x, y, 0); p.rotation.y = ry; g.add(p);
+      const husk = sphere(p, .05, '#b6cf6a', 0, .028, 0, { rough: .7 }); husk.scale.set(.032, .026, .075);
+      const corn = sphere(p, .045, '#f5d469', 0, .036, 0, { rough: .5 }); corn.scale.set(.026, .02, .062);
+      box(p, .07, .008, .008, '#c79a55', 0, .05, 0, { rough: .8 }, .002);
+    }
+  },
+  churrasco(g) {
+    const y = plate(g);
+    for (const z of [-.03, .03]) {
+      const stick = cyl(g, .004, .004, .25, '#c9a06a', 0, y + .035, z, { rough: .8 }, 6); stick.rotation.z = Math.PI / 2;
+      [['#8a3b23', -.07], ['#e0b04a', -.035], ['#7c3320', 0], ['#5f9a3d', .035], ['#8a3b23', .07]].forEach(([c, x]) => box(g, .03, .03, .03, c, x, y + .035, z, { rough: .6 }, .007));
+    }
+  },
+  frango(g) {
+    const y = plate(g, .13);
+    for (let i = 0; i < 6; i++) { const a = i * 1.05, l = sphere(g, .02, '#6db24a', Math.cos(a) * .095, y + .01, Math.sin(a) * .095); l.scale.set(.024, .008, .016); }
+    const body = sphere(g, .07, '#d98a3a', 0, y + .052, 0, { rough: .35, coat: .7 }); body.scale.set(.07, .05, .085);
+    for (const x of [-1, 1]) { const leg = sphere(g, .03, '#cf7e33', x * .055, y + .045, .05, { rough: .35, coat: .7 }); leg.scale.set(.026, .024, .04); sphere(g, .01, '#fff6e8', x * .062, y + .045, .09, { rough: .6 }); }
+  },
+  feijoada(g) {
+    lathe(g, [[0, 0], [.07, 0], [.1, .02], [.11, .07], [.1, .09], [.095, .085], [0, .085]], '#7b3f25', { rough: .55 }, 28, 'clay');
+    cyl(g, .095, .095, .006, '#2b1712', 0, .08, 0, { rough: .3, coat: .6 }, 24);
+    for (let i = 0; i < 5; i++) { const a = i * 1.3; box(g, .028, .014, .02, i % 2 ? '#8a3b23' : '#c06a4a', Math.cos(a) * .045, .088, Math.sin(a) * .045, { rough: .5 }, .005); }
+    const o = cyl(g, .028, .028, .006, '#f39a2c', .07, .1, -.02, { rough: .4 }, 16); o.rotation.z = .5;
+    for (const x of [-1, 1]) { const ear = torus(g, .018, .006, '#7b3f25', { rough: .55 }); ear.position.set(x * .112, .07, 0); ear.rotation.y = Math.PI / 2; }
+  },
+  florestanegra(g) {
+    const y = plate(g);
+    wedge(g, '#3e2117', .03, y);
+    wedge(g, '#fff4ea', .015, y + .03);
+    wedge(g, '#3e2117', .03, y + .045, '#fff4ea');
+    for (let i = 0; i < 3; i++) { sphere(g, .016, '#fff4ea', -.02 + i * .035, y + .1, (i - 1) * .02, { rough: .6 }); sphere(g, .012, '#b3122a', -.02 + i * .035, y + .118, (i - 1) * .02, { rough: .2, coat: 1 }); }
+    for (let i = 0; i < 6; i++) box(g, .01, .004, .006, '#2a150e', .03 - i * .012, y + .096, .04 - i * .01, {}, .001);
+  },
   // premium recipes
   brownie(g) { const y = plate(g);
     for (const [x, z] of [[-.035, -.025], [.035, -.025], [-.035, .03], [.035, .03]]) {
