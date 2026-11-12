@@ -27,6 +27,12 @@ html = (root/'index.html').read_text()
 guard = """<script>window.addEventListener('error',function(e){var l=document.querySelector('#loading p');if(l&&!document.getElementById('loading').classList.contains('gone'))l.textContent='Ops, algo deu errado ao abrir: '+(e.message||'erro');});</script>"""
 html = html.replace('<link rel="stylesheet" href="css/game.css">', '<style>\n' + css + '\n</style>\n' + guard)
 html = html.replace('<script type="module" src="js/main.js"></script>', '<script>\n' + js.replace('</script', '<\\/script') + '\n</script>')
+# version stamp: a hash of everything that ships. The page knows its own id (window.__VER) and compares it with
+# version.json on the server; when they differ it saves and reloads by itself (js/update.js).
+import hashlib, json
+ver = hashlib.sha1((js + css + (root/'index.html').read_text()).encode()).hexdigest()[:10]
+html = html.replace('<style>', '<script>window.__VER="' + ver + '"</script>\n<style>', 1)
 (root/'dist').mkdir(exist_ok=True)
 (root/'dist/index.html').write_text(html)
+(root/'dist/version.json').write_text(json.dumps({'v': ver}))
 print(len(html))

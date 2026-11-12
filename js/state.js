@@ -99,6 +99,7 @@ export function migrate(st) {
   if (!st.dr || typeof st.dr !== 'object') st.dr = { last: '', n: 0 };   // daily reward: last claim date and days in a row
   if (!st.vips || typeof st.vips !== 'object') st.vips = {};            // VIP visits and missions, by hero index
   if (!st.boost || typeof st.boost !== 'object') st.boost = { sal: 2, tomilho: 1 };   // spice shelf
+  if (!Array.isArray(st.fsent)) st.fsent = [];                 // friends already told they were added
   if (!Array.isArray(st.friends)) st.friends = [];   // neighbour codes added by hand (Firebase builds)
   if (!st.energy || !Number.isFinite(st.energy.v)) st.energy = { v: energyMax(level(st)), w: wall() };   // energy for serving drinks
   if (!Number.isFinite(st.energy.w)) st.energy.w = wall();   // older saves counted on the game clock: start counting from now

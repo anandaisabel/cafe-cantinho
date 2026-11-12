@@ -202,8 +202,9 @@ const gprice = n => `${ic('gem', 'mi')}${n.toLocaleString('pt-BR')}`;
 // ---------------- shop ----------------
 export function openShop(tab = 'mobilia') {
   const S = G.S, l = level(S);
-  openPanel('Loja', 'shop', body => {
-    tabs(body, [['mobilia', 'Mobília'], ['cozinha', 'Cozinha'], ['decor', 'Decoração'], ['aberturas', 'Janelas, portas e luzes'], ['especiais', 'Especiais'], ['feira', 'Feira'], ['estilo', 'Pisos e paredes'], ['expandir', 'Ampliar']], tab, k => openShop(k));
+  openPanel('Loja e inventário', 'shop', body => {
+    tabs(body, [['inv', 'Inventário'], ['mobilia', 'Mobília'], ['cozinha', 'Cozinha'], ['decor', 'Decoração'], ['aberturas', 'Janelas, portas e luzes'], ['especiais', 'Especiais'], ['feira', 'Feira'], ['estilo', 'Pisos e paredes'], ['expandir', 'Ampliar']], tab, k => openShop(k));
+    if (tab === 'inv') { inventoryInto(body, S); return; }
     const grid = h('div', 'grid'); body.appendChild(grid);
     if (['mobilia', 'cozinha', 'decor', 'aberturas'].includes(tab)) {
       const nEq = S.items.filter(i => ITEMS[i.type].kind === 'equip').length + Object.entries(S.inv).filter(([k]) => ITEMS[k] && ITEMS[k].kind === 'equip').reduce((a, [, v]) => a + v, 0);
@@ -588,38 +589,37 @@ on('nosink', () => toast('Os garçons não têm onde lavar a louça: os lugares 
 on('mastery', m => { const R = recipe(m.rid); toast(`${'★'.repeat(m.stars)} ${R.n}: nova estrela! +${m.coins} moedas` + (m.gift ? ` e 1 ${boost(m.gift).n}` : '')); sfx('ding'); });
 
 // ---------------- inventory ----------------
-export function openInventory(tab = 'ingr') {
-  const S = G.S;
-  openPanel('Inventário', 'box', body => {
-    tabs(body, [['ingr', 'Ingredientes'], ['moveis', 'Móveis guardados']], tab, k => openInventory(k));
-    if (tab === 'ingr') { invIngredients(body, S); return; }
-    if (G.gifts.length) {
-      body.appendChild(h('div', 'gtitle', 'Presentes recebidos'));
-      const gg = h('div', 'grid'); body.appendChild(gg);
-      for (const g of G.gifts) {
-        const d = g.data, isTip = d.kind === 'tip';
-        gg.appendChild(card(isTip ? null : thumbItem(d.item, 64), isTip ? 'Gorjeta de vizinho' : (ITEMS[d.item]?.n || 'Presente'), isTip ? `+${d.coins} moedas` : 'Presente de um vizinho', 'Receber', {
-          onClick: async () => {
-            if (isTip) addCoins(d.coins || 0); else S.inv[d.item] = (S.inv[d.item] || 0) + 1;
-            G.gifts = G.gifts.filter(x => x.id !== g.id); save(); sfx('coin'); refreshHUD();
-            try { await G.db.collection('gifts').doc(g.id).delete(); } catch (e) { }
-            openInventory();
-          },
-        }));
-        if (isTip) gg.lastChild.querySelector('.thumb').innerHTML = `<span class="bigic">${ICON.gift}</span>`;
-      }
+// Inventory lives inside the shop now (one screen: buy, store, place). openInventory is kept as a shortcut.
+export function openInventory() { openShop('inv'); }
+function inventoryInto(body, S) {
+  if (G.gifts.length) {
+    body.appendChild(h('div', 'gtitle', 'Presentes recebidos'));
+    const gg = h('div', 'grid'); body.appendChild(gg);
+    for (const g of G.gifts) {
+      const d = g.data, isTip = d.kind === 'tip';
+      gg.appendChild(card(isTip ? null : thumbItem(d.item, 64), isTip ? 'Gorjeta de vizinho' : (ITEMS[d.item]?.n || 'Presente'), isTip ? `+${d.coins} moedas` : 'Presente de um vizinho', 'Receber', {
+        onClick: async () => {
+          if (isTip) addCoins(d.coins || 0); else S.inv[d.item] = (S.inv[d.item] || 0) + 1;
+          G.gifts = G.gifts.filter(x => x.id !== g.id); save(); sfx('coin'); refreshHUD();
+          try { await G.db.collection('gifts').doc(g.id).delete(); } catch (e) { }
+          openShop('inv');
+        },
+      }));
+      if (isTip) gg.lastChild.querySelector('.thumb').innerHTML = `<span class="bigic">${ICON.gift}</span>`;
     }
-    body.appendChild(h('div', 'gtitle', 'Itens guardados'));
-    const grid = h('div', 'grid'); body.appendChild(grid);
-    const keys = Object.keys(S.inv).filter(k => S.inv[k] > 0 && ITEMS[k]);
-    if (!keys.length) grid.appendChild(h('p', 'empty', 'Nada guardado. No modo decoração, use “Guardar” para tirar um móvel do salão sem vendê-lo.'));
-    for (const k of keys) {
-      const d = ITEMS[k], c = card(thumbItem(k, 64), `${d.n} × ${S.inv[k]}`, '', 'Colocar', { onClick: () => { closePanel(); beginPlace(k, 'inv'); } });
-      const sell = h('button', 'cbtn ghost', `Vender ${price(Math.floor(d.price / 2))}`);
-      sell.onclick = () => { S.inv[k]--; if (!S.inv[k]) delete S.inv[k]; addCoins(Math.floor(d.price / 2)); save(); sfx('coin'); openInventory(); };
-      c.appendChild(sell); grid.appendChild(c);
-    }
-  });
+  }
+  body.appendChild(h('div', 'gtitle', 'Móveis e decoração guardados'));
+  const grid = h('div', 'grid'); body.appendChild(grid);
+  const keys = Object.keys(S.inv).filter(k => S.inv[k] > 0 && ITEMS[k]);
+  if (!keys.length) grid.appendChild(h('p', 'empty', 'Nada guardado. Toque num móvel do salão e use “Guardar” para tirar sem vender.'));
+  for (const k of keys) {
+    const d = ITEMS[k], c = card(thumbItem(k, 64), `${d.n} × ${S.inv[k]}`, '', 'Colocar', { onClick: () => { closePanel(); beginPlace(k, 'inv'); } });
+    const sell = h('button', 'cbtn ghost', `Vender ${price(Math.floor(d.price / 2))}`);
+    sell.onclick = () => { S.inv[k]--; if (!S.inv[k]) delete S.inv[k]; addCoins(Math.floor(d.price / 2)); save(); sfx('coin'); openShop('inv'); };
+    c.appendChild(sell); grid.appendChild(c);
+  }
+  body.appendChild(h('div', 'gtitle', 'Ingredientes'));
+  invIngredients(body, S);
 }
 
 // --- street market -------------------------------------------------------
@@ -1093,7 +1093,14 @@ export async function addFriend(code) {
   if (code === G.me) return 'self';
   if (G.S.friends.includes(code)) return 'already';
   try { const d = await G.db.doc('cafes/' + code).get(); if (!(d && d.data && d.data())) return 'missing'; } catch (e) { return 'missing'; }
-  G.S.friends.push(code); save(); watchFriend(code); return 'ok';
+  G.S.friends.push(code); save(); watchFriend(code); notifyFriend(code); return 'ok';
+}
+// tell the other person they were added (once per friend), so I appear in their Vizinhos too
+function notifyFriend(id) {
+  const S = G.S; S.fsent = S.fsent || [];
+  if (S.fsent.includes(id) || !G.db || !G.me) return;
+  S.fsent.push(id); save();
+  G.db.collection('gifts').doc(uid() + uid()).set({ to: id, from: G.me, kind: 'friend', at: now() }).catch(() => { S.fsent = S.fsent.filter(x => x !== id); });
 }
 const watching = new Set();
 function watchFriend(id) {
@@ -1152,10 +1159,21 @@ export function visitGift() {
 }
 export function listenSocial() {
   if (!G.db || !G.me) return;
-  try { G.db.collection('gifts').where('to', '==', G.me).onSnapshot(s => { G.gifts = docsOf(s).filter(g => g.data); refreshHUD(); }, () => { }); } catch (e) { }
+  try {
+    G.db.collection('gifts').where('to', '==', G.me).onSnapshot(s => {
+      const all = docsOf(s).filter(g => g.data);
+      // friend notices: someone added me as a neighbour, so they show up in my list too (friendship goes both ways)
+      for (const g of all.filter(g => g.data.kind === 'friend')) {
+        const from = g.data.from;
+        if (from && from !== G.me && G.net === 'firebase' && !G.S.friends.includes(from)) { G.S.friends.push(from); save(); watchFriend(from); toast('Um novo vizinho te adicionou! Veja em Vizinhos'); }
+        try { G.db.collection('gifts').doc(g.id).delete(); } catch (e) { }
+      }
+      G.gifts = all.filter(g => g.data.kind !== 'friend'); refreshHUD();
+    }, () => { });
+  } catch (e) { }
   if (G.net === 'firebase') {
     // only the cafés you added; an invite link (?vizinho=ID) adds that friend on arrival
-    for (const id of G.S.friends) watchFriend(id);
+    for (const id of G.S.friends) { watchFriend(id); notifyFriend(id); }
     const inv = new URLSearchParams(location.search).get('vizinho');
     if (inv) { addFriend(inv).then(r => { if (r === 'ok') toast('Agora vocês são vizinhas! Veja em Vizinhos'); }); history.replaceState(null, '', location.pathname); }
     return;

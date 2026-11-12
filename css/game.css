@@ -582,3 +582,4 @@ body.editing:not(.visiting) .titlebar,body.editing:not(.visiting) .orders{displa
 .dday.done{filter:saturate(.5);opacity:.8}
 .dday .dck{position:absolute;top:2px;right:6px;font-style:normal;color:#fff;background:#7cc3a6;border-radius:50%;width:16px;height:16px;line-height:16px;font-size:11px}
 .dgo{width:100%;background:#8fd18a;border-color:#6fb86a;box-shadow:0 3px 0 #6fb86a;color:#fff}
+.dock button[hidden]{display:none}

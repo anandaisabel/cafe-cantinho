@@ -1,6 +1,8 @@
 // Boot + main loop
 import { THREE, initEngine, resize, fitRoom, zoomAt, render, E, setQuality } from './three/engine.js';
 import * as LOGIN from './login.js';
+import { thumbChar } from './three/thumbs.js';
+import { startUpdateWatch } from './update.js';
 import { loadAssets } from './three/assets.js';
 import { syncView } from './three/view.js';
 import { pumpThumbs } from './three/thumbs.js';
@@ -32,14 +34,16 @@ function wire() {
   document.getElementById('vTip').insertAdjacentHTML('afterbegin', `<span class="bi">${UI.ICON.coin}</span>`);
   bind('bLvl', UI.openProgress);
   bind('bOpen', UI.toggleOpen);
-  bind('bShop', () => UI.openShop());
+  // Shop, Decorate and Inventory are one thing: opening it freezes the café (build mode) and shows the shop
+  const enterBuild = () => { if (G.mode !== 'edit') { G.mode = 'edit'; G.placeFrom = null; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; } };
+  bind('bShop', () => { enterBuild(); UI.openShop(); });
   bind('popChip', () => UI.toast(`😊 Fama ${(G.S.pop || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} · clientes felizes trazem mais clientes!`));
   bind('energyChip', () => UI.openEnergy());
   bind('bEdit', () => { G.mode = 'edit'; G.placeFrom = null; G.sel = null; UI.refreshHUD(); UI.updateToolbar(); document.getElementById('editHint').textContent = 'Arraste os móveis para reorganizar'; });
   bind('bDone', () => { if (G.pending) UI.cancelPlace(); G.mode = 'play'; G.sel = null; G.drag = null; layoutChanged(G.world); UI.refreshHUD(); UI.updateToolbar(); });
   bind('bEditShop', () => UI.openShop());
-  bind('bMenu', UI.openRecipes);
-  bind('bInv', UI.openInventory);
+  bind('bInv', () => { enterBuild(); UI.openShop('inv'); });
+  bind('bMenu', () => UI.openRecipes());   // arrow functions: a click event must not be passed as the filter/tab
   bind('bStaff', UI.openStaff);
   bind('bNeigh', UI.openNeighbors);
   bind('bGoals', UI.openGoals);
@@ -116,10 +120,11 @@ async function boot() {
   cv.addEventListener('webglcontextlost', e => { e.preventDefault(); status('Recarregando o café…'); document.getElementById('loading').classList.remove('gone'); flush(true); setTimeout(() => location.reload(), 1200); });
   UI.refreshHUD();
   UI.listenSocial();
+  startUpdateWatch();
   requestAnimationFrame(loop);
   setTimeout(() => document.getElementById('loading').classList.add('gone'), 250);
   if (isNew) setTimeout(UI.askName, 700);
   else setTimeout(() => { if (UI.dailyReady()) UI.openDaily(); }, 2200);   // the daily reward pops up once a day
-  window.__now = () => nowFn(); window.__ITEMS = CFG_ITEMS; window.__RENDER = render; window.__CACHE = cacheSizes; window.__BUILD = buildItem; window.__DISPOSE = disposeTree; window.__SIM = SIM; window.__G = G; window.__E = E; window.__THREE = THREE; window.__UI = UI; window.__LOGIN = LOGIN; window.__Clock = Clock; window.__ff = s => { for (let i = 0; i < s * 30; i++) { advanceClock(1000 / 30); tick(G.world, 1 / 30, false); } };
+  window.__now = () => nowFn(); window.__ITEMS = CFG_ITEMS; window.__RENDER = render; window.__CACHE = cacheSizes; window.__BUILD = buildItem; window.__DISPOSE = disposeTree; window.__SIM = SIM; window.__G = G; window.__E = E; window.__THREE = THREE; window.__UI = UI; window.__THUMB = thumbChar; window.__LOGIN = LOGIN; window.__Clock = Clock; window.__ff = s => { for (let i = 0; i < s * 30; i++) { advanceClock(1000 / 30); tick(G.world, 1 / 30, false); } };
 }
 boot().catch(e => { status('Ops, algo deu errado ao abrir: ' + (e && e.message || e)); console.error(e); });

@@ -20,7 +20,7 @@ export function randLook(body = pick(BODIES), role) {
   L.eye = pick(['#3a2418', '#4a6fa5', '#3f7a4a', '#6b4430', '#2b2b35']);
   L.lashes = Math.random() < .5;
   L.outfit = pick(body === 'elder' ? ['sweater', 'tee', 'dress'] : ['tee', 'tee', 'dress', 'overalls', 'sweater']);
-  L.acc = pick(body === 'elder' ? ['none', 'scarf', 'beret'] : ['none', 'none', 'bow', 'beret', 'beanie', 'scarf', 'bag', 'glasses']);
+  L.acc = pick(body === 'elder' ? ['none', 'scarf', 'beret', 'straw', 'bowtie'] : body === 'kid' ? ['none', 'none', 'cap', 'beanie', 'bow', 'flower', 'bag', 'headphones'] : ['none', 'none', 'bow', 'beret', 'beanie', 'scarf', 'bag', 'glasses', 'cap', 'straw', 'flower', 'headphones', 'bowtie', 'glasses']);
   if (L.acc === 'glasses') L.glasses = true;
   L.shoes = pick(['#5a4038', '#c0533a', '#3d4f6b', '#f4efe6', '#e89cc0']);
   L.accent = pick(SHIRTS);

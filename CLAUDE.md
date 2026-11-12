@@ -53,6 +53,16 @@ Estas regras valem para toda tarefa neste repositório.
   **Cadeira com cliente** pode ser movida/girada/guardada: `layoutChanged` faz o cliente levantar e sentar de novo no
   novo lugar (`c.resume`, `c.sitRot`), levando pedido e prato. **Cardápio na mão** é um menu aberto de duas folhas.
   **Recompensa diária** (`S.dr`, `DAILY` em ui.js): calendário de 7 dias, abre sozinha uma vez por dia.
+- **Loja, Decorar e Inventário são uma tela só**: o botão Loja entra no modo construção (jogo congela) e abre a loja;
+  aba "Inventário" guarda móveis, presentes e ingredientes. Os botões `bEdit`/`bInv` ficam escondidos (existem por
+  causa dos handlers). **Nunca passe `UI.openX` direto a `bind()`**: o evento de clique vira o 1º argumento (foi o
+  motivo de o Cardápio abrir em branco: `cat` = evento).
+- **Auto-atualização** (`js/update.js`): `build.py` grava `window.__VER` (hash do build) e `dist/version.json`; a página
+  confere a cada minuto e ao voltar à aba, salva e recarrega com `?v=<id>` (fura o cache). Não roda no claude.ai nem com `?offline`.
+- **Vizinhança nos dois sentidos**: ao adicionar um amigo, `notifyFriend` manda um "gift" `kind:'friend'`; quem recebe
+  adiciona o remetente em `S.friends` e apaga o aviso (`S.fsent` evita repetir).
+- **Variedade de bonecos**: `addAccessories` (chars3d.js) põe boina, gorro, boné, chapéu de palha, flor, laço, fone, coroa,
+  óculos, cachecol, gravata-borboleta e mochila nos clientes (`look.acc`, `look.accent`, `look.mustache`); VIPs não.
 - **Login obrigatório no GitHub Pages** (seção 27 do documento mestre): `js/login.js` aparece antes do café
   (criar conta, entrar, esqueci a senha, Google). Conta anônima antiga vira conta sem trocar de id. Cópia local por conta
   (`cafecantinho4:<uid>`); a chave antiga só é herdada pela primeira conta. Sessão mais nova vence: cada sessão grava `sess`

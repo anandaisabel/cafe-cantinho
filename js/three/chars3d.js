@@ -2,7 +2,7 @@
 // Poses come from the pack's own animation clips, blended by weight; a few bones get small overrides
 // (carrying a tray, eating, reading the menu, head tilts) so the café actions read clearly.
 import { THREE } from './engine.js';
-import { cyl, box, sphere, shadowBlob, SHARED } from './kit.js';
+import { cyl, box, sphere, torus, shadowBlob, SHARED } from './kit.js';
 import { radialTexture } from './textures.js';
 import { food3d } from './food3d.js';
 import { charModel, CHAR_CLIPS, CHAR_POSE, CHAR_COUNT, heroModel, HERO_CLIPS } from './assets.js';
@@ -29,6 +29,27 @@ function uniformMaterial(src) {
   }
   return m;
 }
+// Guests get little accessories on top of their 12 models, so no two regulars look alike: hats, glasses, scarves,
+// bows, bags, moustaches and canes. Everything is pinned to a bone (head, torso) so it follows the animation.
+function addAccessories(L, pin) {
+  const c = L.accent || '#f2a7a0', hair = L.hair || '#6b4430';
+  const head = (y = .63) => { const g = new THREE.Group(); g.position.y = y; return g; };
+  switch (L.acc) {
+    case 'beret': { const g = head(.6); const b = sphere(g, .17, c, 0, .03, 0, { rough: .8 }); b.scale.set(.17, .06, .17); g.rotation.z = .12; sphere(g, .02, c, 0, .09, 0); pin('head', g); break; }
+    case 'beanie': { const g = head(.55); const b = sphere(g, .16, c, 0, .02, 0, { rough: .85 }); b.scale.set(.16, .13, .16); cyl(g, .165, .165, .035, '#ffffff', 0, -.045, 0, { rough: .8 }, 18); sphere(g, .035, '#ffffff', 0, .15, 0, { rough: .9 }); pin('head', g); break; }
+    case 'cap': { const g = head(.57); const b = sphere(g, .16, c, 0, .02, 0, { rough: .6 }); b.scale.set(.16, .1, .16); box(g, .2, .018, .13, c, 0, -.01, .17, { rough: .6 }, .008); pin('head', g); break; }
+    case 'straw': { const g = head(.57); cyl(g, .27, .27, .018, '#e8c877', 0, 0, 0, { rough: .9 }, 24); cyl(g, .15, .15, .09, '#e8c877', 0, .01, 0, { rough: .9 }, 18); cyl(g, .152, .152, .025, c, 0, .02, 0, { rough: .7 }, 18); pin('head', g); break; }
+    case 'flower': { const g = head(.6); for (let i = 0; i < 5; i++) { const a = i * 1.257; sphere(g, .035, i % 2 ? '#fff6e4' : '#ffd0dc', Math.cos(a) * .045 + .07, .02, Math.sin(a) * .045 + .06, { rough: .7 }); } sphere(g, .03, '#ffd56b', .07, .025, .06, { rough: .6 }); pin('head', g); break; }
+    case 'bow': { const g = head(.6); for (const s of [-1, 1]) { const b = sphere(g, .05, c, s * .06 + .08, .02, .05, { rough: .5 }); b.scale.set(.06, .04, .035); } sphere(g, .025, c, .08, .02, .05, { rough: .5 }); pin('head', g); break; }
+    case 'headphones': { const g = head(.45); const band = torus(g, .17, .014, c, { rough: .5 }, Math.PI); band.rotation.set(0, Math.PI / 2, 0); band.position.y = .02; for (const s of [-1, 1]) cyl(g, .05, .05, .04, c, s * .17, .03, 0, { rough: .5 }, 14).rotation.z = Math.PI / 2; pin('head', g); break; }
+    case 'crown': { const g = head(.62); cyl(g, .12, .12, .05, '#f2be55', 0, 0, 0, { rough: .3, metal: .6 }, 14); for (let i = 0; i < 5; i++) { const a = i * 1.257; cyl(g, .018, .01, .06, '#f2be55', Math.cos(a) * .1, .05, Math.sin(a) * .1, { rough: .3, metal: .6 }, 6); } pin('head', g); break; }
+    case 'glasses': { const g = head(.5); for (const s of [-1, 1]) torus(g, .042, .008, '#3a2c28', { rough: .4 }).position.set(s * .06, 0, .145); box(g, .04, .01, .01, '#3a2c28', 0, 0, .148, {}, .003); pin('head', g); break; }
+    case 'scarf': { const g = new THREE.Group(); g.position.y = .33; const t = torus(g, .12, .035, c, { rough: .9 }); t.rotation.x = Math.PI / 2; box(g, .05, .13, .03, c, .06, -.07, .11, { rough: .9 }, .01); pin('torso', g); break; }
+    case 'bowtie': { const g = new THREE.Group(); g.position.y = .34; for (const s of [-1, 1]) box(g, .045, .035, .02, c, s * .03, 0, .125, { coat: .3 }, .008); sphere(g, .014, c, 0, 0, .13); pin('torso', g); break; }
+    case 'bag': { const g = new THREE.Group(); g.position.y = .2; box(g, .15, .17, .07, c, 0, 0, -.13, { rough: .7 }, .02); box(g, .13, .05, .075, '#fffaf3', 0, .05, -.13, { rough: .7 }, .01); pin('torso', g); break; }
+  }
+  if (L.mustache) { const g = head(.46); box(g, .09, .02, .02, hair, 0, 0, .15, { rough: .9 }, .008); pin('head', g); }
+}
 export function buildChar(look, role) {
   const L = look;
   const root = new THREE.Group(), rig = new THREE.Group(); root.add(rig); rig.scale.setScalar(bodyScale(L) * CHAR_SCALE);
@@ -45,6 +66,7 @@ export function buildChar(look, role) {
   // extras are placed in model space (y up, z forward) and then pinned to a bone so they follow the animation
   root.updateMatrixWorld(true);
   const pin = (bone, obj) => { rig.add(obj); bones[bone].attach(obj); return obj; };
+  if (!hero && role === 'cust') addAccessories(L, pin);
   if (role === 'chef' || role === 'owner') {
     const hat = new THREE.Group(); hat.position.y = .63;
     cyl(hat, .15, .14, .1, '#ffffff', 0, .04, 0, { rough: .75, sheen: .5 }, 18);
