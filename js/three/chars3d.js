@@ -84,7 +84,10 @@ export function animateChar(C, c, t, dt, o = {}) {
   C.last = [c.gx, c.gy];
   C.root.rotation.y = C.yaw;
   // seated: keep the hip joint on the seat whatever the body size (measured: hip sits .026 above the root per unit of scale)
-  C.root.position.set(c.gx, sit ? (o.seatY || .29) + SIT_DY - .026 * bodyScale(c.look) * CHAR_SCALE : 0, c.gy);
+  // KayKit adventurers' sit clip already lifts the hips to chair height from a root on the floor (measured hips +.256
+  // above the root), so they only need a small lift; the Kenney people are raised to the seat instead.
+  const sitY = C.hero ? (o.seatY || .29) - .26 : (o.seatY || .29) + SIT_DY - .026 * bodyScale(c.look) * CHAR_SCALE;
+  C.root.position.set(c.gx, sit ? sitY : 0, c.gy);
   // which clip
   let clip = 'idle', headX = 0, headZ = 0, jump = 0;
   if (mv) clip = 'walk';

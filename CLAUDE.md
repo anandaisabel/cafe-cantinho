@@ -42,7 +42,8 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
-- **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
+- **Bonecos maiores** (`CHAR_SCALE` 1.4); altura sentada corrigida pela medida do quadril. VIPs KayKit sentam com a raiz quase no chão (`seatY - .26`):
+  o clipe `Sit_Chair_Idle` já ergue o quadril. Pratos na mesa 2.0×. Vendedor da feira do lado direito da barraca (árvore da frente afastada).
 - **VIPs reluzentes**: auréola dourada, anel no chão, faíscas e brilho no corpo (`vipFx` em chars3d.js);
   chance de 3% a 9% por cliente a partir do nível 3. Vendedor da feira fica na frente da barraca.
 - **Ciclo do jogo blindado** (`main.js`): o próximo quadro é agendado antes e cada quadro roda em try/catch;
