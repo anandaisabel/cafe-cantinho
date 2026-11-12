@@ -41,6 +41,7 @@ Estas regras valem para toda tarefa neste repositório.
 - **Estações mistas** (gelateria, forno, fonte de chocolate): o painel prepara os pratos e lista as bebidas da
   máquina embaixo. Só equipamento sem pratos abre o painel "o que servir?".
 - **Chef cozinha sozinho** após 5 min de jogo com a cozinha parada (`AUTO_COOK_MS`): a receita mais rápida possível.
+- **Um cliente por cadeira** (`freeSeats`): mesas recebem vários clientes; mesa suja não recebe novos até ser limpa.
 - **Modo decoração = modo construção** (estilo The Sims): simulação, bonecos, pedestres, vendedor e vento congelam,
   a cena fica azulada (`setBuildMode`, uniform `build` do passe VIBRANT) e a faixa `.buildbanner` avisa a pausa.
 - **Ingredientes por nível**: `spiceLevel(id)` = nível da primeira receita que usa; feira e loja só vendem a partir

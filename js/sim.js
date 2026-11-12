@@ -234,13 +234,13 @@ function spawnInterval(w) {
 export function tableOf(st, chairId) { const ch = st.items.find(i => i.id === chairId); return ch ? seatInfo(st, ch) : null; }
 export const isDirty = t => !!(t && t.dirty);
 function freeSeats(w) {
-  const st = w.st, taken = new Set(), busy = new Set();
-  for (const c of w.custs) if (c.seat) { taken.add(c.seat); const t = tableOf(st, c.seat); if (t) busy.add(t.id); }
-  // a table serves one guest at a time, and a dirty table serves nobody until it is wiped
+  const st = w.st, taken = new Set();
+  for (const c of w.custs) if (c.seat) taken.add(c.seat);
+  // one guest per chair (a table with four chairs seats four); a dirty table takes no new guests until it is wiped
   return seats(st).filter(ch => {
     if (taken.has(ch.id)) return false;
     const t = seatInfo(st, ch);
-    return t && !busy.has(t.id) && !isDirty(t);
+    return t && !isDirty(t);
   });
 }
 
